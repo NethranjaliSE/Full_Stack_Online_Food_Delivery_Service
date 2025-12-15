@@ -1,5 +1,6 @@
 package com.example.food_order_backend.controller;
 
+import com.example.food_order_backend.dto.LoginRequest;
 import com.example.food_order_backend.dto.RegisterRequest;
 import com.example.food_order_backend.model.User;
 import com.example.food_order_backend.service.AuthService;
@@ -19,4 +20,9 @@ public class AuthController {
     public User register(@Valid @RequestBody RegisterRequest request) {
         return authService.register(request);
     }
+    @PostMapping("/login")
+    public User login(@Valid @RequestBody LoginRequest request) {
+        return authService.login(request.getEmail(), request.getPassword());
+    }   
+
 }

@@ -40,4 +40,15 @@ public class AuthService {
 
         return userRepository.save(user);   // this write auto-creates the 'users' collection
     }
+    public User login(String email, String password) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new RuntimeException("Invalid email or password");
+        }
+
+        return user; // later you will return DTO or JWT token
+    }
+
 }
