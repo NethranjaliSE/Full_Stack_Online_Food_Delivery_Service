@@ -12,6 +12,6 @@ public class FoodiesapiApplication {
 
 }
 //mongodb
-//Username -foodies_admin 
-//Password - Foodies@123 
-//mongodb+srv://foodies_admin:Foodies@123@foodiescluster.nwtvmo1.mongodb.net/
+//Username -ishinisenarathna2001_db_user
+//Password - IVc5MXi1C9OXLWNI 
+//mongodb+srv://ishinisenarathna2001_db_user:IVc5MXi1C9OXLWNI@cluster0.jmw65zh.mongodb.net/?appName=Cluster0
