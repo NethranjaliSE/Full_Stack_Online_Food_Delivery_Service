@@ -1,26 +1,29 @@
-package in.bushansirgur.foodiesapi.entity;
+package com.example.foodapi.entity;
 
-import in.bushansirgur.foodiesapi.io.OrderItem;
+import lombok.Builder;
+import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.List;
-import lombok.Data;
 
 @Document(collection = "orders")
 @Data
 @Builder
 public class OrderEntity {
-    @id
+
+    @Id
     private String id;
+
     private String userId;
     private String userAddress;
     private String phoneNumber;
     private String email;
+
     private List<OrderItem> orderedItems;
     private double amount;
-    private String paymentStatus;
-    private String razorpayOrderId;
-    private String razorpaySignature;
-    private String orderStatus;
+
+    private String paymentStatus;   // CREATED, APPROVED, COMPLETED
+    private String paypalOrderId;   // PayPal Order ID
+    private String orderStatus;     // CREATED, CONFIRMED
 }

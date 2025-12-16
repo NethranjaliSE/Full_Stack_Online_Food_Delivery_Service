@@ -1,14 +1,15 @@
-package in.bushansirgur.foodiesapi.repository;
+package com.example.foodapi.repository;
 
-import in.bushansirgur.foodiesapi.entity.OrderEntity;
+import com.example.foodapi.entity.OrderEntity;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.List;
 
-@repository
-public interface OrderRepository extends MongoRepository<OrderEntity, String>{
+@Repository
+public interface OrderRepository extends MongoRepository<OrderEntity, String> {
+
     List<OrderEntity> findByUserId(String userId);
-    Optional<OrderEntity> findByRazorpayOrderId(String razorpayOrderId);
+    Optional<OrderEntity> findByPaypalOrderId(String paypalOrderId);
 }

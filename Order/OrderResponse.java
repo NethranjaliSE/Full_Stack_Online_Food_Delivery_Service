@@ -1,20 +1,16 @@
-package in.bushansirgur.foodiesapi.io;
+package com.example.foodapi.dto;
 
-import lombok.data;
 import lombok.Builder;
+import lombok.Data;
 
-@data
+@Data
 @Builder
-
 public class OrderResponse {
+
     private String id;
     private String userId;
-    private String userAddress;
-    private String phoneNumber;
-    private String email;
     private double amount;
+    private String paypalOrderId;
     private String paymentStatus;
-    private String razorpayOrderId;
     private String orderStatus;
 }
-

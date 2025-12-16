@@ -1,13 +1,11 @@
-package in.bushansirgur.foodiesapi.io;
+package com.example.foodapi.dto;
 
 import lombok.Builder;
 import lombok.Data;
-
 import java.util.List;
 
 @Data
-@Builder   
-
+@Builder
 public class OrderRequest {
 
     private List<OrderItem> orderedItems;

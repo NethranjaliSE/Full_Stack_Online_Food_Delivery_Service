@@ -1,23 +1,20 @@
-package in.bushansirgur.foodiesapi.controller;
+package com.example.foodapi.controller;
 
-import in.bushansirgur.foodiesapi.io.OrderService;
+import com.example.foodapi.dto.OrderRequest;
+import com.example.foodapi.dto.OrderResponse;
+import com.example.foodapi.service.OrderService;
 import lombok.AllArgsConstructor;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/orders")
-@AllArgsController
-
+@AllArgsConstructor
 public class OrderController {
 
     private final OrderService orderService;
 
     @PostMapping("/create")
-    public OrderResponse createOrderWithPayment(@RequestBody OrderRequest request) {
+    public OrderResponse createOrder(@RequestBody OrderRequest request) {
         return orderService.createOrderWithPayment(request);
-
     }
 }

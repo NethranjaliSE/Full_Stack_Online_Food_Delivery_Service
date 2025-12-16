@@ -1,9 +1,8 @@
-package in.bushansirgur.foodiesapi.service;
+package com.example.foodapi.service;
 
-import in.bushansirgur.foodiesapi.io.OrderRequest;
+import com.example.foodapi.dto.OrderRequest;
+import com.example.foodapi.dto.OrderResponse;
 
 public interface OrderService {
-   
     OrderResponse createOrderWithPayment(OrderRequest request);
-    
 }

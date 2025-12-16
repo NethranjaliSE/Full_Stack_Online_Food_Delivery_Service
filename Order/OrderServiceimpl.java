@@ -1,68 +1,58 @@
-package in.bushansirgur.foodiesapi.service;
+package com.example.foodapi.service;
 
-import in.bushansirgur.foodiesapi.io.OrderResponse;
-import in.bushansirgur.foodiesapi.repository.OrderRepository;
+import com.example.foodapi.dto.OrderRequest;
+import com.example.foodapi.dto.OrderResponse;
+import com.example.foodapi.entity.OrderEntity;
+import com.example.foodapi.repository.OrderRepository;
 import lombok.AllArgsConstructor;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 @AllArgsConstructor
-public class OrderServiceimpl implements OrderService {
+public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final UserService userService;
 
-    @Value("${razorpay_key}")
-    private String RAZORPAY_KEY;
-    @Value("${razorpay_secret}")
-    private String RAZORPAY_SECRET;
+    @Value("${paypal.client.id}")
+    private String paypalClientId;
 
-    @override
+    @Value("${paypal.client.secret}")
+    private String paypalClientSecret;
+
+    @Override
     public OrderResponse createOrderWithPayment(OrderRequest request) {
-        OrderEntity newOrder = convertToEntity(request);
-        newOrder = orderRepository.save(newOrder);
 
-
-
-        //create razorpay payment order here
-        RazorpayClient razorpayClient = new RazorpayClient(RAZORPAY_KEY, RAZORPAY_SECRET);
-        JSONObject orderRequest = new JSONObject();
-        orderRequest.put("amount", newOrder.getAmount());
-        orderRequest.put("currency", "INR");
-        orderRequest.put("payment_capture",1);
-
-        Order razorpayOrder = razorpayClient.Orders.create(orderRequest);
-        newOrder.setRazorpayOrderId(razorpayOrder.get("id"));
-        String loggedInUserId = userService.findByUserId();
-        newOrder.setUserId(loggedInUserId);
-        newOrder = orderRepository.save(newOrder);
-        return convertToResponse(newOrder);
-    }
-
-    private OrderResponse convertToResponse(OrderEntity newOrder){
-        return OrderResponse.builder()
-                .id(newOrder.getId())
-                .amount(newOrder.getAmount())
-                .userAddress(newOrder.getUserAddress())
-                .userId(newOrder.getUserId())
-                .paymentStatus(newOrder.getPaymentStatus())
-                .razorpayOrderId(newOrder.getRazorpayOrderId())
-                .orderStatus(newOrder.getOrderStatus())
-                .email(newOrder.getEmail())
-                .phoneNumber(newOrder.getPhoneNumber())
-                .build();
-    }
-
-    private OrderEntity convertToEntity(OrderRequest request){
-        return OrderEntity.builder()
+        // Save order before payment
+        OrderEntity order = OrderEntity.builder()
                 .userAddress(request.getUserAddress())
                 .amount(request.getAmount())
                 .orderedItems(request.getOrderedItems())
                 .email(request.getEmail())
                 .phoneNumber(request.getPhoneNumber())
-                .orderStatus(request.getOrderStatus())
+                .orderStatus("CREATED")
+                .paymentStatus("CREATED")
                 .build();
-            }
+
+        String userId = userService.getLoggedInUserId();
+        order.setUserId(userId);
+
+        // Simulated PayPal Order ID (for demo/project)
+        String paypalOrderId = "PAYPAL-" + UUID.randomUUID();
+
+        order.setPaypalOrderId(paypalOrderId);
+        order = orderRepository.save(order);
+
+        return OrderResponse.builder()
+                .id(order.getId())
+                .userId(order.getUserId())
+                .amount(order.getAmount())
+                .paypalOrderId(order.getPaypalOrderId())
+                .paymentStatus(order.getPaymentStatus())
+                .orderStatus(order.getOrderStatus())
+                .build();
+    }
 }
