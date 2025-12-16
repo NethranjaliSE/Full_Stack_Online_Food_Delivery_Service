@@ -1,6 +1,8 @@
 package com.example.food_order_backend.service;
 
 import com.example.food_order_backend.dto.RegisterRequest;
+import com.example.food_order_backend.dto.LoginRequest;
+import com.example.food_order_backend.dto.AuthResponse;
 import com.example.food_order_backend.model.User;
 import com.example.food_order_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,9 +17,9 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public User register(RegisterRequest request) {
-
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already registered");
         }
@@ -38,17 +40,23 @@ public class AuthService {
                                 .collect(Collectors.toList()))
                 .build();
 
-        return userRepository.save(user);   // this write auto-creates the 'users' collection
+        return userRepository.save(user);
     }
-    public User login(String email, String password) {
-        User user = userRepository.findByEmail(email)
+
+    public AuthResponse login(LoginRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new RuntimeException("Invalid email or password");
         }
 
-        return user; // later you will return DTO or JWT token
+        String token = jwtService.generateToken(user.getEmail());
+        return new AuthResponse(token);
+    }
+    public User getByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
 }
