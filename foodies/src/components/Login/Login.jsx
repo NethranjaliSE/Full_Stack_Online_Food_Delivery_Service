@@ -36,6 +36,14 @@ const Login = () => {
       toast.error("Unable to login. Please try again");
     }
   };
+
+  const onResetHandler = () => {
+    // This sets the state back to empty strings
+    setData({
+      email: "",
+      password: "",
+    });
+  };
   return (
     <div className="login-container">
       <div className="row">
@@ -80,7 +88,8 @@ const Login = () => {
                   </button>
                   <button
                     className="btn btn-outline-danger btn-login text-uppercase mt-2"
-                    type="reset"
+                    type="button" // Changed from "reset" to "button"
+                    onClick={onResetHandler} // Added this
                   >
                     Reset
                   </button>

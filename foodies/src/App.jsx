@@ -13,6 +13,7 @@ import { ToastContainer } from "react-toastify";
 import MyOrders from "./pages/MyOrders/MyOrders";
 import { StoreContext } from "./context/StoreContext";
 
+
 const App = () => {
   const { token } = useContext(StoreContext);
   return (
@@ -29,6 +30,7 @@ const App = () => {
         <Route path="/login" element={token ? <Home /> : <Login />} />
         <Route path="/register" element={token ? <Home /> : <Register />} />
         <Route path="/myorders" element={token ? <MyOrders /> : <Login />} />
+        
       </Routes>
     </div>
   );

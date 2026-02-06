@@ -6,26 +6,32 @@ import { StoreContext } from "../../context/StoreContext";
 
 const Menubar = () => {
   const [active, setActive] = useState("home");
+
+  // 1. Get Context Data
   const { quantities, token, setToken, setQuantities } =
     useContext(StoreContext);
-  const uniqueItemsInCart = Object.values(quantities).filter(
+
+  const navigate = useNavigate();
+
+  // 2. CRITICAL FIX: Add '|| {}' to prevent crash if quantities is null
+  const uniqueItemsInCart = Object.values(quantities || {}).filter(
     (qty) => qty > 0,
   ).length;
-  const navigate = useNavigate();
 
   const logout = () => {
     localStorage.removeItem("token");
     setToken("");
-    setQuantities({});
+    setQuantities({}); // Reset cart on logout
     navigate("/");
   };
+
   return (
     <nav className="navbar navbar-expand-lg bg-body-tertiary">
       <div className="container">
         <Link to="/">
           <img
             src={assets.logo}
-            alt=""
+            alt="Logo"
             className="mx-4"
             height={48}
             width={48}
@@ -80,21 +86,27 @@ const Menubar = () => {
               </Link>
             </li>
           </ul>
+
           <div className="d-flex align-items-center gap-4">
+            {/* Cart Icon */}
             <Link to={`/cart`}>
               <div className="position-relative">
                 <img
-                  src={assets.cart}
-                  alt=""
+                  src={assets.cart_icon || assets.cart} // Ensure this matches your assets file name
+                  alt="Cart"
                   height={28}
                   width={28}
                   className="position-relative"
                 />
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
-                  {uniqueItemsInCart}
-                </span>
+                {uniqueItemsInCart > 0 && (
+                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+                    {uniqueItemsInCart}
+                  </span>
+                )}
               </div>
             </Link>
+
+            {/* Login/Register or Profile Dropdown */}
             {!token ? (
               <>
                 <button
@@ -119,22 +131,33 @@ const Menubar = () => {
                   aria-expanded="false"
                 >
                   <img
-                    src={assets.profile}
-                    alt=""
+                    src={assets.profile_icon || assets.profile} // Ensure matches assets file
+                    alt="Profile"
                     width={32}
                     height={32}
                     className="rounded-circle"
                   />
                 </a>
-                <ul className="dropdown-menu text-small">
-                  <li
-                    className="dropdown-item"
-                    onClick={() => navigate("/myorders")}
-                  >
-                    Orders
+                <ul
+                  className="dropdown-menu text-small"
+                  style={{ cursor: "pointer" }}
+                >
+                  {/* ORDERS BUTTON */}
+                  <li onClick={() => navigate("/myorders")}>
+                    <a className="dropdown-item d-flex align-items-center gap-2">
+                      <i className="bi bi-bag-check"></i>
+                      Orders
+                    </a>
                   </li>
-                  <li className="dropdown-item" onClick={logout}>
-                    Logout
+                  <li>
+                    <hr className="dropdown-divider" />
+                  </li>
+                  {/* LOGOUT BUTTON */}
+                  <li onClick={logout}>
+                    <a className="dropdown-item d-flex align-items-center gap-2 text-danger">
+                      <i className="bi bi-box-arrow-right"></i>
+                      Logout
+                    </a>
                   </li>
                 </ul>
               </div>

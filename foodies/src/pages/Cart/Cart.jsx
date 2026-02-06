@@ -12,7 +12,7 @@ const Cart = () => {
   const cartItems = foodList.filter((food) => quantities[food.id] > 0);
 
   //calcualtiong
-  const { subtotal, shipping, tax, total } = calculateCartTotals(
+  const { subtotal, delivery, tax, total } = calculateCartTotals(
     cartItems,
     quantities,
   );
@@ -68,7 +68,7 @@ const Cart = () => {
                     </div>
                     <div className="col-md-2 text-end">
                       <p className="fw-bold">
-                        &#8377;{(food.price * quantities[food.id]).toFixed(2)}
+                        Rs.{(food.price * quantities[food.id]).toFixed(2)}
                       </p>
                       <button
                         className="btn btn-sm btn-outline-danger"
@@ -96,29 +96,27 @@ const Cart = () => {
               <h5 className="card-title mb-4">Order Summary</h5>
               <div className="d-flex justify-content-between mb-3">
                 <span>Subtotal</span>
-                <span>&#8377;{subtotal.toFixed(2)}</span>
+                <span>Rs.{subtotal.toFixed(2)}</span>
               </div>
               <div className="d-flex justify-content-between mb-3">
-                <span>Shipping</span>
-                <span>&#8377;{subtotal === 0 ? 0.0 : shipping.toFixed(2)}</span>
+                <span>Delivery</span>
+                <span>Rs.{subtotal === 0 ? 0.0 : delivery.toFixed(2)}</span>
               </div>
               <div className="d-flex justify-content-between mb-3">
                 <span>Tax</span>
-                <span>&#8377;{tax.toFixed(2)}</span>
+                <span>Rs.{tax.toFixed(2)}</span>
               </div>
               <hr />
               <div className="d-flex justify-content-between mb-4">
                 <strong>Total</strong>
-                <strong>
-                  &#8377;{subtotal === 0 ? 0.0 : total.toFixed(2)}
-                </strong>
+                <strong>Rs.{subtotal === 0 ? 0.0 : total.toFixed(2)}</strong>
               </div>
               <button
                 className="btn btn-primary w-100"
                 disabled={cartItems.length === 0}
                 onClick={() => navigate("/order")}
               >
-                Proceed to Checkout
+                Proceed to Pay
               </button>
             </div>
           </div>

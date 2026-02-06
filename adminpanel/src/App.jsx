@@ -1,4 +1,4 @@
-import {  useState } from "react";
+import { useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import AddFood from "./pages/AddFood/AddFood";
 import ListFood from "./pages/ListFood/ListFood";

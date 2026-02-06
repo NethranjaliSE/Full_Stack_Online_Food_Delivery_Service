@@ -4,7 +4,6 @@ import com.example.foodiesapi.entity.FoodEntity;
 import com.example.foodiesapi.io.FoodRequest;
 import com.example.foodiesapi.io.FoodResponse;
 import com.example.foodiesapi.repository.FoodRepository;
-import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -23,7 +22,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class FoodServiceImpl implements FoodService{
+public class FoodServiceImpl implements FoodService {
 
     @Autowired
     private S3Client s3Client;
@@ -35,8 +34,8 @@ public class FoodServiceImpl implements FoodService{
 
     @Override
     public String uploadFile(MultipartFile file) {
-        String filenameExtension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")+1);
-        String key = UUID.randomUUID().toString()+"."+filenameExtension;
+        String filenameExtension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".") + 1);
+        String key = UUID.randomUUID().toString() + "." + filenameExtension;
         try {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
@@ -47,11 +46,11 @@ public class FoodServiceImpl implements FoodService{
             PutObjectResponse response = s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
 
             if (response.sdkHttpResponse().isSuccessful()) {
-                return "https://"+bucketName+".s3.amazonaws.com/"+key;
+                return "https://" + bucketName + ".s3.amazonaws.com/" + key;
             } else {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "File upload failed");
             }
-        }catch (IOException ex) {
+        } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An error occured while uploading the file");
         }
     }
@@ -68,12 +67,13 @@ public class FoodServiceImpl implements FoodService{
     @Override
     public List<FoodResponse> readFoods() {
         List<FoodEntity> databaseEntries = foodRepository.findAll();
-        return databaseEntries.stream().map(object -> convertToResponse(object)).collect(Collectors.toList());
+        return databaseEntries.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
     public FoodResponse readFood(String id) {
-        FoodEntity existingFood = foodRepository.findById(id).orElseThrow(() -> new RuntimeException("Food not found for the id:"+id));
+        FoodEntity existingFood = foodRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Food not found for the id:" + id));
         return convertToResponse(existingFood);
     }
 
@@ -91,12 +91,17 @@ public class FoodServiceImpl implements FoodService{
     public void deleteFood(String id) {
         FoodResponse response = readFood(id);
         String imageUrl = response.getImageUrl();
-        String filename = imageUrl.substring(imageUrl.lastIndexOf("/")+1);
-        boolean isFileDelete = deleteFile(filename);
-        if (isFileDelete) {
-            foodRepository.deleteById(response.getId());
+        // Extract filename from URL safely
+        if (imageUrl != null && imageUrl.contains("/")) {
+            String filename = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+            deleteFile(filename);
         }
+
+        // Remove from DB
+        foodRepository.deleteById(response.getId());
     }
+
+    // --- UPDATED CONVERSION METHODS WITH STOCK ---
 
     private FoodEntity convertToEntity(FoodRequest request) {
         return FoodEntity.builder()
@@ -104,8 +109,9 @@ public class FoodServiceImpl implements FoodService{
                 .description(request.getDescription())
                 .category(request.getCategory())
                 .price(request.getPrice())
+                // 1. Save the stock from the request to the database
+                .stock(request.getStock())
                 .build();
-
     }
 
     private FoodResponse convertToResponse(FoodEntity entity) {
@@ -116,7 +122,8 @@ public class FoodServiceImpl implements FoodService{
                 .category(entity.getCategory())
                 .price(entity.getPrice())
                 .imageUrl(entity.getImageUrl())
+                // 2. Send the stock count back to the frontend
+                .stock(entity.getStock())
                 .build();
     }
 }
-

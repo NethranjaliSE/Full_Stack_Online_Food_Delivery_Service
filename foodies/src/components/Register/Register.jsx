@@ -1,11 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import "./Register.css";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { registerUser } from "../../service/authService";
+// 1. Google & Axios Imports
+import { GoogleLogin } from "@react-oauth/google";
+import axios from "axios";
+import { StoreContext } from "../../context/StoreContext";
 
 const Register = () => {
   const navigate = useNavigate();
+  const { setToken } = useContext(StoreContext); // Access context to save login
+
   const [data, setData] = useState({
     name: "",
     email: "",
@@ -31,6 +37,35 @@ const Register = () => {
     } catch (error) {
       toast.error("Unable to register. Please try again");
     }
+  };
+
+  // --- GOOGLE LOGIN HANDLER ---
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      // 2. Send token to your Backend on PORT 8081
+      const response = await axios.post(
+        "http://localhost:8081/api/google-login",
+        {
+          token: credentialResponse.credential,
+        },
+      );
+
+      // 3. If backend returns success with a token
+      if (response.data && response.data.token) {
+        setToken(response.data.token);
+        localStorage.setItem("token", response.data.token);
+
+        toast.success("Login Successful!");
+        navigate("/"); // Redirect to Home
+      }
+    } catch (error) {
+      console.error("Google Auth Error:", error);
+      toast.error("Google Login Failed. Check if backend is running on 8081.");
+    }
+  };
+
+  const handleGoogleError = () => {
+    toast.error("Google Login Failed");
   };
 
   return (
@@ -97,7 +132,23 @@ const Register = () => {
                     Reset
                   </button>
                 </div>
-                <div className="mt-4">
+
+                <hr className="my-4" />
+
+                <div className="d-flex flex-column align-items-center">
+                  <p className="text-secondary small mb-3">Or continue with</p>
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    theme="outline"
+                    size="large"
+                    width="300"
+                    text="signup_with"
+                    shape="pill"
+                  />
+                </div>
+
+                <div className="mt-4 text-center">
                   Already have an account? <Link to="/login">Sign In</Link>
                 </div>
               </form>

@@ -30,6 +30,8 @@ const Sidebar = ({ sidebarVisible }) => {
         >
           <i className="bi bi-cart me-2"></i> Orders
         </Link>
+
+       
       </div>
     </div>
   );

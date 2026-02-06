@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { assets } from "../../assets/assets";
-import axios from "axios";
+// import axios from "axios"; // You don't seem to use axios directly here, but keeping it if you need later
 import { addFood } from "../../services/foodService";
 import { toast } from "react-toastify";
 
@@ -11,6 +11,7 @@ const AddFood = () => {
     description: "",
     price: "",
     category: "Biryani",
+    stock: "", // 1. Added stock to state
   });
 
   const onChangeHandler = (event) => {
@@ -26,14 +27,23 @@ const AddFood = () => {
       return;
     }
     try {
+      // NOTE: Ensure your 'addFood' service appends 'data.stock' to the FormData!
       await addFood(data, image);
       toast.success("Food added successfully.");
-      setData({ name: "", description: "", category: "Biryani", price: "" });
+      // 2. Reset stock field on success
+      setData({
+        name: "",
+        description: "",
+        category: "Biryani",
+        price: "",
+        stock: "",
+      });
       setImage(null);
     } catch (error) {
       toast.error("Error adding food.");
     }
   };
+
   return (
     <div className="mx-2 mt-2">
       <div className="row">
@@ -47,6 +57,7 @@ const AddFood = () => {
                     src={image ? URL.createObjectURL(image) : assets.upload}
                     alt=""
                     width={98}
+                    style={{ cursor: "pointer" }}
                   />
                 </label>
                 <input
@@ -57,6 +68,7 @@ const AddFood = () => {
                   onChange={(e) => setImage(e.target.files[0])}
                 />
               </div>
+
               <div className="mb-3">
                 <label htmlFor="name" className="form-label">
                   Name
@@ -88,6 +100,7 @@ const AddFood = () => {
                   value={data.description}
                 ></textarea>
               </div>
+
               <div className="mb-3">
                 <label htmlFor="category" className="form-label">
                   Category
@@ -101,13 +114,14 @@ const AddFood = () => {
                 >
                   <option value="Biryani">Biryani</option>
                   <option value="Cake">Cake</option>
-                  <option value="Burger">Buger</option>
+                  <option value="Burger">Burger</option>
                   <option value="Pizza">Pizza</option>
                   <option value="Rolls">Rolls</option>
                   <option value="Salad">Salad</option>
                   <option value="Ice cream">Ice cream</option>
                 </select>
               </div>
+
               <div className="mb-3">
                 <label htmlFor="price" className="form-label">
                   Price
@@ -120,8 +134,27 @@ const AddFood = () => {
                   className="form-control"
                   onChange={onChangeHandler}
                   value={data.price}
+                  required
                 />
               </div>
+
+              {/* 3. NEW STOCK INPUT FIELD */}
+              <div className="mb-3">
+                <label htmlFor="stock" className="form-label">
+                  Stock Quantity
+                </label>
+                <input
+                  type="number"
+                  name="stock"
+                  id="stock"
+                  placeholder="e.g. 50"
+                  className="form-control"
+                  onChange={onChangeHandler}
+                  value={data.stock}
+                  required
+                />
+              </div>
+
               <button type="submit" className="btn btn-primary">
                 Save
               </button>

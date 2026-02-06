@@ -57,7 +57,7 @@ const ListFood = () => {
                   <td>RS.{item.price}.00</td>
                   <td className="text-danger">
                     <i
-                      class="bi bi-trash-fill fs-4"
+                      className="bi bi-trash-fill fs-4"
                       onClick={() => removeFood(item.id)}
                     ></i>
                   </td>

@@ -15,6 +15,12 @@ const Orders = () => {
     }
   };
 
+  const assignDriver = async (orderId, driverId) => {
+    await axios.put(url + `/api/delivery/assign/${orderId}/${driverId}`);
+    toast.success("Driver Assigned!");
+    fetchOrders(); // Refresh list
+  };
+
   const updateStatus = async (event, orderId) => {
     const success = await updateOrderStatus(orderId, event.target.value);
     if (success) await fetchOrders();
@@ -48,7 +54,7 @@ const Orders = () => {
                       </div>
                       <div>{order.userAddress}</div>
                     </td>
-                    <td>&#x20B9;{order.amount.toFixed(2)}</td>
+                    <td>Rs.{order.amount.toFixed(2)}</td>
                     <td>Items: {order.orderedItems.length}</td>
                     <td>
                       <select
