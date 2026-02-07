@@ -20,4 +20,13 @@ public class FoodEntity {
     private double price;
     private String category;
     private String imageUrl;
+
+    // 1. New field for tracking inventory
+    // (null = unlimited, 0 = out of stock, >0 = available quantity)
+    private Integer stock;
+
+    // 2. Helper method to check availability
+    public boolean isOutOfStock() {
+        return stock != null && stock <= 0;
+    }
 }

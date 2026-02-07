@@ -1,21 +1,17 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import "./PlaceOrder.css";
 import { assets } from "../../assets/assets";
 import { StoreContext } from "../../context/StoreContext";
 import { calculateCartTotals } from "../../util/cartUtils";
 import { toast } from "react-toastify";
-import { RAZORPAY_KEY } from "../../util/contants";
 import { useNavigate } from "react-router-dom";
-import {
-  createOrder,
-  deleteOrder,
-  verifyPayment,
-} from "../../service/orderService";
+import { createOrder } from "../../service/orderService";
 import { clearCartItems } from "../../service/cartService";
 
 const PlaceOrder = () => {
-  const { foodList, quantities, setQuantities, token } =
+  const { foodList, quantities, setQuantities, token, fetchFoodList } =
     useContext(StoreContext);
+
   const navigate = useNavigate();
 
   const [data, setData] = useState({
@@ -24,10 +20,22 @@ const PlaceOrder = () => {
     email: "",
     phoneNumber: "",
     address: "",
-    state: "",
     city: "",
-    zip: "",
   });
+
+  const cartItems = foodList.filter((food) => quantities[food.id] > 0);
+  const { subtotal, delivery, tax, total } = calculateCartTotals(
+    cartItems,
+    quantities,
+  );
+
+  useEffect(() => {
+    if (!token) {
+      navigate("/login");
+    } else if (cartItems.length === 0) {
+      navigate("/cart");
+    }
+  }, [token, cartItems.length, navigate]);
 
   const onChangeHandler = (event) => {
     const name = event.target.name;
@@ -37,107 +45,114 @@ const PlaceOrder = () => {
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
+
+    // 1. Create the order object for your backend
     const orderData = {
-      userAddress: `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.state}, ${data.zip}`,
+      userAddress: `${data.address}, ${data.city}`,
       phoneNumber: data.phoneNumber,
       email: data.email,
       orderedItems: cartItems.map((item) => ({
-        foodId: item.foodId,
+        id: item.id,
         quantity: quantities[item.id],
         price: item.price * quantities[item.id],
-        category: item.category,
-        imageUrl: item.imageUrl,
-        description: item.description,
         name: item.name,
       })),
-      amount: total.toFixed(2),
+      amount: total.toFixed(2), // Important: 2 decimal places
       orderStatus: "Preparing",
     };
 
     try {
+      // 2. Send to backend to save order and get Hash
       const response = await createOrder(orderData, token);
-      if (response.razorpayOrderId) {
-        // initiate the payment
-        initiateRazorpayPayment(response);
+
+      // 3. If backend gives us a hash, open PayHere
+      if (response && response.hash) {
+        initiatePayHerePayment(response);
       } else {
-        toast.error("Unable to place order. Please try again.");
+        toast.error("Failed to initialize payment. Try again.");
       }
     } catch (error) {
-      toast.error("Unable to place order. Please try again.");
+      console.error(error);
+      toast.error("Error connecting to server.");
     }
   };
 
-  const initiateRazorpayPayment = (order) => {
-    const options = {
-      key: RAZORPAY_KEY,
-      amount: order.amount, //Convert to paise
-      currency: "INR",
-      name: "Food Land",
-      description: "Food order payment",
-      order_id: order.razorpayOrderId,
-      handler: verifyPaymentHandler,
-      prefill: {
-        name: `${data.firstName} ${data.lastName}`,
-        email: data.email,
-        contact: data.phoneNumber,
-      },
-      theme: { color: "#3399cc" },
-      modal: {
-        ondismiss: deleteOrderHandler,
-      },
-    };
-    const razorpay = new window.Razorpay(options);
-    razorpay.open();
-  };
+  const initiatePayHerePayment = (backendData) => {
+    if (!window.payhere) {
+      toast.error("PayHere SDK is not loaded.");
+      return;
+    }
 
-  const verifyPaymentHandler = async (razorpayResponse) => {
-    const paymentData = {
-      razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-      razorpay_order_id: razorpayResponse.razorpay_order_id,
-      razorpay_signature: razorpayResponse.razorpay_signature,
+    // --- KEY FIX: Manually build the Payment Object ---
+    // Since we aren't using Ngrok, we rely on 'return_url' and 'onCompleted'
+    const payment = {
+      sandbox: true,
+      merchant_id: backendData.merchant_id, // Must match your PayHere ID
+
+      // Redirects for success/cancel (Localhost is fine here)
+      return_url: "http://localhost:5173/myorders",
+      cancel_url: "http://localhost:5173/cart",
+
+      // Keep this empty or a dummy URL since you aren't using Ngrok
+      notify_url: "http://localhost:8081/api/orders/notify",
+
+      order_id: backendData.order_id,
+      items: "Food Order",
+      amount: total.toFixed(2), // Must match the hash generation amount
+      currency: "LKR",
+      hash: backendData.hash, // The security hash from your backend
+
+      // User details from your Form State
+      first_name: data.firstName,
+      last_name: data.lastName,
+      email: data.email,
+      phone: data.phoneNumber,
+      address: data.address,
+      city: data.city,
+      country: "Sri Lanka",
     };
-    try {
-      const success = await verifyPayment(paymentData, token);
-      if (success) {
-        toast.success("Payment successful.");
-        await clearCart();
-        navigate("/myorders");
-      } else {
-        toast.error("Payment failed. Please try again.");
-        navigate("/");
+
+    // --- Success Handler ---
+    window.payhere.onCompleted = async function onCompleted(orderId) {
+      console.log("Payment completed. OrderID:" + orderId);
+      toast.success("Payment Successful!");
+
+      // Since notify_url won't work on localhost, we clear the cart here manually
+      await clearCart();
+
+      if (fetchFoodList) {
+        await fetchFoodList();
       }
-    } catch (error) {
-      toast.error("Payment failed. Please try again.");
-    }
-  };
+      navigate("/myorders");
+    };
 
-  const deleteOrderHandler = async (orderId) => {
-    try {
-      await deleteOrder(orderId, token);
-    } catch (error) {
-      toast.error("Something went wrong. Contact support.");
-    }
+    // --- Dismissed Handler ---
+    window.payhere.onDismissed = function onDismissed() {
+      toast.info("Payment dismissed.");
+    };
+
+    // --- Error Handler ---
+    window.payhere.onError = function onError(error) {
+      console.log("Error:" + error);
+      toast.error("Payment Failed: " + error);
+    };
+
+    // Open the popup
+    window.payhere.startPayment(payment);
   };
 
   const clearCart = async () => {
     try {
       await clearCartItems(token, setQuantities);
     } catch (error) {
-      toast.error("Error while clearing the cart.");
+      console.error("Failed to clear cart:", error);
     }
   };
 
-  //cart items
-  const cartItems = foodList.filter((food) => quantities[food.id] > 0);
-
-  //calcualtiong
-  const { subtotal, shipping, tax, total } = calculateCartTotals(
-    cartItems,
-    quantities,
-  );
   return (
     <div className="container mt-4">
       <main>
+        {/* ... (Keep your existing HTML/JSX for the form exactly as it was) ... */}
         <div className="py-5 text-center">
           <img
             className="d-block mx-auto"
@@ -148,6 +163,7 @@ const PlaceOrder = () => {
           />
         </div>
         <div className="row g-5">
+          {/* Cart Summary */}
           <div className="col-md-5 col-lg-4 order-md-last">
             <h4 className="d-flex justify-content-between align-items-center mb-3">
               <span className="text-primary">Your cart</span>
@@ -168,176 +184,100 @@ const PlaceOrder = () => {
                     </small>
                   </div>
                   <span className="text-body-secondary">
-                    &#8377;{item.price * quantities[item.id]}
+                    Rs.{(item.price * quantities[item.id]).toFixed(2)}
                   </span>
                 </li>
               ))}
               <li className="list-group-item d-flex justify-content-between">
-                <div>
-                  <span>Shipping</span>
-                </div>
-                <span className="text-body-secondary">
-                  &#8377;{subtotal === 0 ? 0.0 : shipping.toFixed(2)}
-                </span>
-              </li>
-              <li className="list-group-item d-flex justify-content-between">
-                <div>
-                  <span>Tax (10%)</span>
-                </div>
-                <span className="text-body-secondary">
-                  &#8377;{tax.toFixed(2)}
-                </span>
-              </li>
-
-              <li className="list-group-item d-flex justify-content-between">
-                <span>Total (INR)</span>
-                <strong>&#8377;{total.toFixed(2)}</strong>
+                <span>Total (Rs.)</span>
+                <strong>Rs.{total.toFixed(2)}</strong>
               </li>
             </ul>
           </div>
+
+          {/* Billing Form */}
           <div className="col-md-7 col-lg-8">
             <h4 className="mb-3">Billing address</h4>
             <form className="needs-validation" onSubmit={onSubmitHandler}>
               <div className="row g-3">
                 <div className="col-sm-6">
-                  <label htmlFor="firstName" className="form-label">
-                    First name
-                  </label>
+                  <label className="form-label">First name</label>
                   <input
                     type="text"
                     className="form-control"
-                    id="firstName"
-                    placeholder="Jhon"
-                    required
                     name="firstName"
-                    onChange={onChangeHandler}
                     value={data.firstName}
+                    onChange={onChangeHandler}
+                    required
                   />
                 </div>
-
                 <div className="col-sm-6">
-                  <label htmlFor="lastName" className="form-label">
-                    Last name
-                  </label>
+                  <label className="form-label">Last name</label>
                   <input
                     type="text"
                     className="form-control"
-                    id="lastName"
-                    placeholder="Doe"
+                    name="lastName"
                     value={data.lastName}
                     onChange={onChangeHandler}
-                    name="lastName"
                     required
                   />
                 </div>
-
                 <div className="col-12">
-                  <label htmlFor="email" className="form-label">
-                    Email
-                  </label>
-                  <div className="input-group has-validation">
-                    <span className="input-group-text">@</span>
-                    <input
-                      type="email"
-                      className="form-control"
-                      id="email"
-                      placeholder="Email"
-                      required
-                      name="email"
-                      onChange={onChangeHandler}
-                      value={data.email}
-                    />
-                  </div>
+                  <label className="form-label">Email</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    name="email"
+                    value={data.email}
+                    onChange={onChangeHandler}
+                    required
+                  />
                 </div>
                 <div className="col-12">
-                  <label htmlFor="phone" className="form-label">
-                    Phone Number
-                  </label>
+                  <label className="form-label">Phone</label>
                   <input
                     type="number"
                     className="form-control"
-                    id="phone"
-                    placeholder="9876543210"
-                    required
-                    value={data.phoneNumber}
                     name="phoneNumber"
+                    value={data.phoneNumber}
                     onChange={onChangeHandler}
+                    required
                   />
                 </div>
                 <div className="col-12">
-                  <label htmlFor="address" className="form-label">
-                    Address
-                  </label>
+                  <label className="form-label">Address</label>
                   <input
                     type="text"
                     className="form-control"
-                    id="address"
-                    placeholder="1234 Main St"
-                    required
-                    value={data.address}
                     name="address"
+                    value={data.address}
                     onChange={onChangeHandler}
+                    required
                   />
                 </div>
-                <div className="col-md-5">
-                  <label htmlFor="state" className="form-label">
-                    State
-                  </label>
+                <div className="col-12">
+                  <label className="form-label">City</label>
                   <select
                     className="form-select"
-                    id="state"
-                    required
-                    name="state"
-                    value={data.state}
-                    onChange={onChangeHandler}
-                  >
-                    <option value="">Choose...</option>
-                    <option>Karnataka</option>
-                  </select>
-                </div>
-
-                <div className="col-md-4">
-                  <label htmlFor="city" className="form-label">
-                    City
-                  </label>
-                  <select
-                    className="form-select"
-                    id="city"
-                    required
                     name="city"
                     value={data.city}
                     onChange={onChangeHandler}
+                    required
                   >
                     <option value="">Choose...</option>
-                    <option>Banglore</option>
+                    <option value="Colombo">Colombo</option>
+                    <option value="Kandy">Kandy</option>
+                    <option value="Galle">Galle</option>
                   </select>
                 </div>
-
-                <div className="col-md-3">
-                  <label htmlFor="zip" className="form-label">
-                    Zip
-                  </label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    id="zip"
-                    placeholder="98745"
-                    required
-                    name="zip"
-                    value={data.zip}
-                    onChange={onChangeHandler}
-                  />
-                </div>
               </div>
-
               <hr className="my-4" />
-
               <button
                 className="w-100 btn btn-primary btn-lg"
                 type="submit"
                 disabled={cartItems.length === 0}
               >
-                Continue to checkout
+                Pay with PayHere
               </button>
             </form>
           </div>

@@ -3,9 +3,9 @@ export const calculateCartTotals = (cartItems, quantities) => {
     (acc, food) => acc + food.price * quantities[food.id],
     0,
   );
-  const shipping = subtotal === 0 ? 0.0 : 10;
+  const delivery = subtotal === 0 ? 0.0 : 350;
   const tax = subtotal * 0.1; //10%
-  const total = subtotal + shipping + tax;
+  const total = subtotal + delivery + tax;
 
-  return { subtotal, shipping, tax, total };
+  return { subtotal, delivery, tax, total };
 };

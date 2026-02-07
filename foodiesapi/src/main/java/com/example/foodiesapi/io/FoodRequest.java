@@ -13,4 +13,10 @@ public class FoodRequest {
     private String description;
     private double price;
     private String category;
+
+    // I added imageUrl back because your Entity has it
+    private String imageUrl;
+
+    // --- NEW FIELD FOR STOCK FEATURE ---
+    private Integer stock;
 }

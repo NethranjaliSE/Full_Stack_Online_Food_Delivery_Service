@@ -6,26 +6,36 @@ import { StoreContext } from "../../context/StoreContext";
 
 const Menubar = () => {
   const [active, setActive] = useState("home");
+
+  // 1. Get Context Data
   const { quantities, token, setToken, setQuantities } =
     useContext(StoreContext);
-  const uniqueItemsInCart = Object.values(quantities).filter(
+
+  // Get Role to show correct dashboard after login
+  const userRole = localStorage.getItem("role");
+
+  const navigate = useNavigate();
+
+  const uniqueItemsInCart = Object.values(quantities || {}).filter(
     (qty) => qty > 0,
   ).length;
-  const navigate = useNavigate();
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("role"); // Clear role on logout
+    localStorage.removeItem("userEmail");
     setToken("");
     setQuantities({});
     navigate("/");
   };
+
   return (
-    <nav className="navbar navbar-expand-lg bg-body-tertiary">
+    <nav className="navbar navbar-expand-lg bg-body-tertiary sticky-top shadow-sm">
       <div className="container">
         <Link to="/">
           <img
             src={assets.logo}
-            alt=""
+            alt="Logo"
             className="mx-4"
             height={48}
             width={48}
@@ -80,36 +90,51 @@ const Menubar = () => {
               </Link>
             </li>
           </ul>
-          <div className="d-flex align-items-center gap-4">
-            <Link to={`/cart`}>
+
+          <div className="d-flex align-items-center gap-3">
+            {/* Cart Icon */}
+            <Link to={`/cart`} className="me-2">
               <div className="position-relative">
                 <img
-                  src={assets.cart}
-                  alt=""
+                  src={assets.cart_icon || assets.cart}
+                  alt="Cart"
                   height={28}
                   width={28}
                   className="position-relative"
                 />
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
-                  {uniqueItemsInCart}
-                </span>
+                {uniqueItemsInCart > 0 && (
+                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+                    {uniqueItemsInCart}
+                  </span>
+                )}
               </div>
             </Link>
+
             {!token ? (
-              <>
+              <div className="d-flex align-items-center gap-2">
+                {/* 👇 THIS IS THE KEY FIX: Pass state to Register page */}
+                <Link
+                  to="/register"
+                  state={{ role: "ROLE_DELIVERY" }} // Signal to become a Driver
+                  className="text-decoration-none text-muted fw-bold me-3 d-none d-md-block"
+                  style={{ fontSize: "0.9rem", cursor: "pointer" }}
+                >
+                  Deliver with us
+                </Link>
+
                 <button
-                  className="btn btn-outline-primary btn-sm"
+                  className="btn btn-outline-primary btn-sm px-3"
                   onClick={() => navigate("/login")}
                 >
                   Login
                 </button>
                 <button
-                  className="btn btn-outline-success btn-sm"
+                  className="btn btn-primary btn-sm px-3"
                   onClick={() => navigate("/register")}
                 >
                   Register
                 </button>
-              </>
+              </div>
             ) : (
               <div className="dropdown text-end">
                 <a
@@ -119,22 +144,49 @@ const Menubar = () => {
                   aria-expanded="false"
                 >
                   <img
-                    src={assets.profile}
-                    alt=""
+                    src={assets.profile_icon || assets.profile}
+                    alt="Profile"
                     width={32}
                     height={32}
-                    className="rounded-circle"
+                    className="rounded-circle border"
                   />
                 </a>
-                <ul className="dropdown-menu text-small">
-                  <li
-                    className="dropdown-item"
-                    onClick={() => navigate("/myorders")}
-                  >
-                    Orders
+                <ul
+                  className="dropdown-menu text-small shadow"
+                  style={{ cursor: "pointer" }}
+                >
+                  {/* DYNAMIC DASHBOARD LINK: Only show for Delivery Boys */}
+                  {userRole === "ROLE_DELIVERY" && (
+                    <>
+                      <li onClick={() => navigate("/delivery-dashboard")}>
+                        <a className="dropdown-item d-flex align-items-center gap-2 text-success fw-bold">
+                          <i className="bi bi-bicycle"></i>
+                          Delivery Dashboard
+                        </a>
+                      </li>
+                      <li>
+                        <hr className="dropdown-divider" />
+                      </li>
+                    </>
+                  )}
+
+                  {/* Standard Orders link for Customers */}
+                  <li onClick={() => navigate("/myorders")}>
+                    <a className="dropdown-item d-flex align-items-center gap-2">
+                      <i className="bi bi-bag-check"></i>
+                      Orders
+                    </a>
                   </li>
-                  <li className="dropdown-item" onClick={logout}>
-                    Logout
+
+                  <li>
+                    <hr className="dropdown-divider" />
+                  </li>
+
+                  <li onClick={logout}>
+                    <a className="dropdown-item d-flex align-items-center gap-2 text-danger">
+                      <i className="bi bi-box-arrow-right"></i>
+                      Logout
+                    </a>
                   </li>
                 </ul>
               </div>
