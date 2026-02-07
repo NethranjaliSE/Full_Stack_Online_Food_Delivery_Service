@@ -12,6 +12,7 @@ const Sidebar = ({ sidebarVisible }) => {
     <div
       className={`border-end bg-white ${sidebarVisible ? "" : "d-none"}`}
       id="sidebar-wrapper"
+      style={{ minHeight: "100vh" }} // Ensure full height
     >
       <div className="sidebar-heading border-bottom bg-light py-4 px-3">
         <img src={assets.logo} alt="Foodies Logo" height={32} />
@@ -40,12 +41,12 @@ const Sidebar = ({ sidebarVisible }) => {
           <i className="bi bi-cart me-2"></i> Orders
         </Link>
 
-        {/* NEW: Delivery Management Link */}
+        {/* UPDATED: Matches the route in App.jsx */}
         <Link
-          className={`list-group-item list-group-item-action list-group-item-light p-3 ${isActive("/delivery-management")}`}
-          to="/delivery-management"
+          className={`list-group-item list-group-item-action list-group-item-light p-3 ${isActive("/delivery-list")}`}
+          to="/delivery-list"
         >
-          <i className="bi bi-truck me-2"></i> Delivery Boys
+          <i className="bi bi-truck me-2"></i> Delivery Team
         </Link>
       </div>
     </div>

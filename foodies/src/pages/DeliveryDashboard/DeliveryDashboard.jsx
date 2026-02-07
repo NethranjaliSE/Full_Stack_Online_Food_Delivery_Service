@@ -1,48 +1,50 @@
 import React, { useEffect, useState, useContext } from "react";
-import axios from "axios";
 import { StoreContext } from "../../context/StoreContext";
 import { toast } from "react-toastify";
+import axios from "axios";
 import "./DeliveryDashboard.css";
+import {
+  getMyOrders,
+  toggleAvailability as toggleService,
+} from "../../service/deliveryService";
 
 const DeliveryDashboard = () => {
-  // 1. Initialize as an empty array []
   const [orders, setOrders] = useState([]);
-  const { url, token } = useContext(StoreContext);
+  const [isAvailable, setIsAvailable] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { token } = useContext(StoreContext);
+  const url = "http://localhost:8081";
 
-  const deliveryBoyId = localStorage.getItem("userEmail");
-
-  const fetchMyOrders = async () => {
-    if (!token) return; // Guard clause
+  // 1. DISCOVERY LOGIC
+  const syncDriver = async () => {
+    const email = localStorage.getItem("userEmail");
+    if (!email || !token) return;
     try {
-      const response = await axios.get(
-        `${url}/api/delivery/my-orders/${deliveryBoyId}`,
+      const res = await axios.get(
+        `${url}/api/delivery/user-by-email/${email}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-
-      // 2. CRITICAL FIX: Check response structure
-      // Sometimes backend sends { success: true, data: [...] }
-      // Sometimes it sends just [...]
-      if (
-        response.data &&
-        response.data.data &&
-        Array.isArray(response.data.data)
-      ) {
-        setOrders(response.data.data);
-      } else if (Array.isArray(response.data)) {
-        setOrders(response.data);
-      } else {
-        console.warn("API did not return an array:", response.data);
-        setOrders([]);
-      }
-    } catch (error) {
-      console.error("Error fetching tasks", error);
-      toast.error("Failed to load delivery tasks.");
-      setOrders([]); // Safety fallback
+      localStorage.setItem("userId", res.data.id);
+      setIsAvailable(res.data.available);
+      return res.data.id;
+    } catch (e) {
+      console.error("Sync failed", e);
     }
   };
 
+  const fetchOrders = async (id) => {
+    try {
+      const data = await getMyOrders(id);
+      setOrders(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  // 2. STATUS UPDATE LOGIC
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
       await axios.patch(
@@ -52,105 +54,132 @@ const DeliveryDashboard = () => {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      toast.success(`Order marked as ${newStatus}`);
-      fetchMyOrders(); // Refresh the list
-    } catch (error) {
-      console.error(error);
-      toast.error("Status update failed.");
+      toast.success(`Status updated: ${newStatus}`);
+      fetchOrders(localStorage.getItem("userId"));
+    } catch (e) {
+      toast.error("Failed to update status");
+    }
+  };
+
+  // 3. ACCEPT/REJECT LOGIC
+  const handleResponse = async (orderId, accept) => {
+    try {
+      await axios.patch(
+        `${url}/api/delivery/orders/${orderId}/respond?accept=${accept}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      toast.success(accept ? "Job Accepted!" : "Job Rejected");
+      fetchOrders(localStorage.getItem("userId"));
+    } catch (e) {
+      toast.error("Action failed");
     }
   };
 
   useEffect(() => {
-    if (token) {
-      fetchMyOrders();
-    }
+    const init = async () => {
+      let id = localStorage.getItem("userId");
+      if (!id || id === "undefined") id = await syncDriver();
+      if (id) fetchOrders(id);
+    };
+    if (token) init();
   }, [token]);
 
+  if (loading)
+    return <div className="text-center mt-5">Loading Dashboard...</div>;
+
   return (
-    <div className="delivery-dashboard-container">
-      <div className="dashboard-header">
-        <h2>
-          <i className="bi bi-truck me-2"></i>Delivery Partner Dashboard
-        </h2>
-        <p>
-          Manage your assigned deliveries and update order status in real-time.
-        </p>
+    <div className="container mt-4">
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center mb-4 p-3 bg-white shadow-sm rounded">
+        <h3 className="m-0">Delivery Console</h3>
+        <button
+          className={`btn fw-bold ${isAvailable ? "btn-success" : "btn-danger"}`}
+          onClick={async () => {
+            const id = localStorage.getItem("userId");
+            await toggleService(id, !isAvailable);
+            setIsAvailable(!isAvailable);
+          }}
+        >
+          {isAvailable ? "🟢 Online" : "🔴 Busy"}
+        </button>
       </div>
 
-      <div className="order-list">
-        {/* 3. SAFETY CHECK: Ensure orders is an array before checking length */}
-        {!Array.isArray(orders) || orders.length === 0 ? (
-          <div className="no-orders">
-            <i className="bi bi-clipboard-check fs-1"></i>
-            <p>No active deliveries assigned to you yet.</p>
+      {/* Orders */}
+      <div className="row">
+        {orders.length === 0 ? (
+          <div className="text-center text-muted mt-5">
+            No active orders found.
           </div>
         ) : (
-          orders.map((order, index) => (
-            <div key={index} className="delivery-card shadow-sm">
-              <div className="card-top">
-                <span className="order-id">
-                  {/* Handle _id or id safely */}
-                  Order ID: #
-                  {order._id ? order._id.slice(-6) : order.id?.slice(-6)}
-                </span>
-                <span
-                  className={`status-badge ${order.orderStatus?.toLowerCase().replace(/\s/g, "-")}`}
-                >
-                  {order.orderStatus}
-                </span>
-              </div>
+          orders.map((order) => (
+            <div key={order.id || order._id} className="col-12 mb-3">
+              <div className="card shadow-sm border-0">
+                <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                  <span className="fw-bold">
+                    Order #{String(order.id).slice(-4)}
+                  </span>
+                  <span className="badge bg-primary">{order.orderStatus}</span>
+                </div>
 
-              <div className="card-body">
-                <div className="info-row">
-                  <i className="bi bi-person"></i>
-                  <span>{order.email}</span>
-                </div>
-                <div className="info-row">
-                  <i className="bi bi-geo-alt"></i>
-                  <span>{order.userAddress}</span>
-                </div>
-                <div className="info-row">
-                  <i className="bi bi-telephone"></i>
-                  <span>{order.phoneNumber}</span>
-                </div>
-                <div className="items-list">
-                  <strong>Items:</strong>{" "}
-                  {order.orderedItems
-                    .map((item) => `${item.name} (x${item.quantity})`)
-                    .join(", ")}
-                </div>
-              </div>
+                <div className="card-body">
+                  <p className="mb-1">
+                    <strong>Address:</strong> {order.userAddress}
+                  </p>
+                  <p className="mb-3">
+                    <strong>Amount:</strong> Rs.{order.amount}
+                  </p>
 
-              <div className="card-footer">
-                <span className="amount">
-                  {/* Optional chaining for amount */}
-                  Total: Rs.{order.amount ? order.amount.toFixed(2) : "0.00"}
-                </span>
-                <div className="action-buttons">
-                  {/* Only show 'Start Delivery' if status is Preparing or Assigned */}
-                  {(order.orderStatus === "ASSIGNED" ||
-                    order.orderStatus === "Preparing") && (
+                  {/* --- BUTTON LOGIC (SIMPLIFIED) --- */}
+
+                  {/* 1. SHOW ACCEPT/REJECT (If status is Assigned OR Pending) */}
+                  {(order.deliveryAcceptanceStatus === "PENDING" ||
+                    order.orderStatus === "Assigned") && (
+                    <div className="d-flex gap-2 mb-2">
+                      <button
+                        className="btn btn-success flex-fill"
+                        onClick={() => handleResponse(order.id, true)}
+                      >
+                        ✅ Accept Job
+                      </button>
+                      <button
+                        className="btn btn-outline-danger flex-fill"
+                        onClick={() => handleResponse(order.id, false)}
+                      >
+                        ❌ Reject
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 2. SHOW START DELIVERY (If Confirmed) */}
+                  {order.orderStatus === "Driver Confirmed" && (
                     <button
+                      className="btn btn-warning w-100 fw-bold text-dark"
                       onClick={() =>
-                        handleStatusUpdate(
-                          order._id || order.id,
-                          "Out for delivery",
-                        )
+                        handleStatusUpdate(order.id, "Out for delivery")
                       }
-                      className="btn btn-primary btn-sm"
                     >
-                      Start Delivery
+                      🚀 Start Delivery
                     </button>
                   )}
+
+                  {/* 3. SHOW COMPLETE DELIVERY (If Out for Delivery) */}
                   {order.orderStatus === "Out for delivery" && (
                     <button
-                      onClick={() =>
-                        handleStatusUpdate(order._id || order.id, "Delivered")
-                      }
-                      className="btn btn-success btn-sm"
+                      className="btn btn-primary w-100 fw-bold"
+                      onClick={() => handleStatusUpdate(order.id, "Delivered")}
                     >
-                      Mark Delivered
+                      🏁 Complete Delivery
                     </button>
+                  )}
+
+                  {/* 4. SHOW COMPLETED (If Delivered) */}
+                  {order.orderStatus === "Delivered" && (
+                    <div className="alert alert-success text-center m-0 p-2 fw-bold">
+                      🎉 Job Completed
+                    </div>
                   )}
                 </div>
               </div>
@@ -161,5 +190,4 @@ const DeliveryDashboard = () => {
     </div>
   );
 };
-
 export default DeliveryDashboard;

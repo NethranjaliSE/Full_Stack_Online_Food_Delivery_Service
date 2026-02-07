@@ -33,15 +33,15 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. CORS: Must be configured first to handle Preflight (OPTIONS) requests
+                // 1. CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 2. CSRF: Disabled for Stateless JWT-based authentication
+                // 2. CSRF
                 .csrf(AbstractHttpConfigurer::disable)
 
                 // 3. Authorization Rules
                 .authorizeHttpRequests(auth -> auth
-                        // Public Endpoints: Accessible without any token
+                        // Public Endpoints
                         .requestMatchers(
                                 "/api/register",
                                 "/api/login",
@@ -50,22 +50,24 @@ public class SecurityConfig {
                                 "/api/orders/notify"
                         ).permitAll()
 
-                        // Admin Only: Requires ROLE_ADMIN
+                        // Admin Only
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/orders/all").hasRole("ADMIN")
                         .requestMatchers("/api/orders/status/**").hasRole("ADMIN")
 
-                        // Delivery Partner Only: Requires ROLE_DELIVERY
-                        .requestMatchers("/api/delivery/**").hasRole("DELIVERY")
+                        // 👇 THIS IS THE FIX 👇
+                        // We removed the conflicting .hasRole("DELIVERY") line.
+                        // Now, EITHER 'ROLE_DELIVERY' OR 'ROLE_ADMIN' can access this.
+                        .requestMatchers("/api/delivery/**").hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN")
 
-                        // Secure all other requests (Place order, etc.)
+                        // Secure all other requests
                         .anyRequest().authenticated()
                 )
 
-                // 4. Session Management: Stateless because we use JWT
+                // 4. Session Management
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 5. JWT Filter: Intercepts requests to validate tokens before Username/Password filter
+                // 5. JWT Filter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -80,17 +82,17 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allowed Origins: Covers all potential React development ports
+        // Allowed Origins
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost:5174",
                 "http://localhost:5175"
         ));
 
-        // Allowed Methods: Includes PATCH for status updates
+        // Allowed Methods
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
-        // Allowed Headers: Must include Authorization for the Bearer token
+        // Allowed Headers
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control"));
 
         config.setAllowCredentials(true);

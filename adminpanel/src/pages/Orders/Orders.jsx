@@ -1,43 +1,58 @@
 import React, { useEffect, useState } from "react";
 import { assets } from "../../assets/assets";
 import { fetchAllOrders, updateOrderStatus } from "../../services/orderService";
-// Import a service to fetch drivers or use axios directly
 import axios from "axios";
 import { toast } from "react-toastify";
+import "./Orders.css";
 
-const Orders = () => {
+const Orders = ({ url }) => {
+  // Ensure 'url' is received as a prop
   const [data, setData] = useState([]);
-  const [drivers, setDrivers] = useState([]); // State for available drivers
-  const url = "http://localhost:8081"; // Your backend URL
+  const [availableDrivers, setAvailableDrivers] = useState([]); // Renamed for clarity
+
+  // Use the token for secure requests
+  const token = localStorage.getItem("token");
 
   const fetchOrders = async () => {
     try {
       const response = await fetchAllOrders();
       setData(response);
     } catch (error) {
-      toast.error("Unable to display the orders. Please try again.");
+      toast.error("Unable to display the orders.");
     }
   };
 
-  // NEW: Fetch available delivery boys (ROLE_DELIVERY & isAvailable: true)
+  // ✅ FIX: This function fetches ONLY drivers with status "Available: true"
   const fetchAvailableDrivers = async () => {
     try {
+      // Calling the specific endpoint for online drivers
       const response = await axios.get(
-        url + "/api/admin/delivery-boys/available",
+        `${url}/api/delivery/available-drivers`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
       );
-      setDrivers(response.data);
+      setAvailableDrivers(response.data);
     } catch (error) {
       console.error("Error fetching drivers", error);
     }
   };
 
-  // UPDATED: Use your new assignment endpoint
   const assignDriver = async (orderId, driverId) => {
     if (!driverId) return;
     try {
-      await axios.put(url + `/api/orders/${orderId}/assign/${driverId}`);
+      await axios.patch(
+        `${url}/api/delivery/assign-order`,
+        {
+          orderId: orderId,
+          driverId: driverId,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       toast.success("Driver Assigned!");
-      fetchOrders(); // Refresh list to show new status
+      fetchOrders();
     } catch (error) {
       toast.error("Failed to assign driver.");
     }
@@ -49,86 +64,113 @@ const Orders = () => {
   };
 
   useEffect(() => {
-    fetchOrders();
-    fetchAvailableDrivers(); // Load drivers on mount
-  }, []);
+    if (token) {
+      fetchOrders();
+      fetchAvailableDrivers();
+    }
+  }, [token]);
+
+  // Helper for status badges
+  const getAcceptanceBadge = (status) => {
+    switch (status) {
+      case "ACCEPTED":
+        return <span className="badge bg-success ms-2">Confirmed</span>;
+      case "REJECTED":
+        return <span className="badge bg-danger ms-2">Rejected</span>;
+      case "PENDING":
+        return <span className="badge bg-warning text-dark ms-2">Pending</span>;
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="container">
-      <div className="py-5 row justify-content-center">
-        <div className="col-12 card shadow-sm">
-          <table className="table table-responsive align-middle">
-            <thead>
-              <tr>
-                <th>Package</th>
-                <th>Order Details</th>
-                <th>Amount</th>
-                <th>Items</th>
-                <th>Assign Driver</th>
-                <th>Status</th>
+    <div className="container py-5">
+      <h3>Order Management</h3>
+      <div className="table-responsive">
+        <table className="table table-hover align-middle shadow-sm bg-white rounded">
+          <thead className="table-dark">
+            <tr>
+              <th>Item</th>
+              <th>Details</th>
+              <th>Amount</th>
+              <th>Assign Driver (Online Only)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((order, index) => (
+              <tr key={index}>
+                <td style={{ width: "60px" }}>
+                  <img src={assets.parcel} alt="" width={50} />
+                </td>
+                <td>
+                  <p className="mb-1 fw-bold">
+                    {order.orderedItems.map((item, i) => (
+                      <span key={i}>
+                        {item.name} x {item.quantity}
+                        {i !== order.orderedItems.length - 1 ? ", " : ""}
+                      </span>
+                    ))}
+                  </p>
+                  <p className="mb-0 small text-muted">
+                    {order.userAddress} <br />
+                    <strong>{order.userName}</strong>
+                  </p>
+                </td>
+                <td>Rs.{order.amount.toFixed(2)}</td>
+
+                <td style={{ minWidth: "250px" }}>
+                  <div className="d-flex flex-column gap-2">
+                    {/* ✅ DROPDOWN: Only shows drivers from 'availableDrivers' list */}
+                    <select
+                      className="form-select form-select-sm"
+                      onChange={(e) => assignDriver(order.id, e.target.value)}
+                      value={order.deliveryBoyId || ""}
+                      disabled={order.deliveryAcceptanceStatus === "ACCEPTED"}
+                    >
+                      <option value="" disabled>
+                        Select Online Driver
+                      </option>
+
+                      {availableDrivers.length === 0 && (
+                        <option disabled>No drivers online</option>
+                      )}
+
+                      {availableDrivers.map((driver) => (
+                        <option key={driver.id} value={driver.id}>
+                          🟢 {driver.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    {order.deliveryBoyId && (
+                      <div className="small">
+                        Status:{" "}
+                        {getAcceptanceBadge(order.deliveryAcceptanceStatus)}
+                      </div>
+                    )}
+                  </div>
+                </td>
+
+                <td>
+                  <select
+                    className="form-select form-select-sm"
+                    onChange={(event) => updateStatus(event, order.id)}
+                    value={order.orderStatus}
+                  >
+                    <option value="Placed">Placed</option>
+                    <option value="Food Preparing">Food Preparing</option>
+                    <option value="Assigned">Assigned</option>
+                    <option value="Driver Confirmed">Driver Confirmed</option>
+                    <option value="Out for delivery">Out for delivery</option>
+                    <option value="Delivered">Delivered</option>
+                  </select>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {data.map((order, index) => {
-                return (
-                  <tr key={index}>
-                    <td>
-                      <img src={assets.parcel} alt="" height={48} width={48} />
-                    </td>
-                    <td>
-                      <div className="fw-bold">
-                        {order.orderedItems.map((item, i) => (
-                          <span key={i}>
-                            {item.name} x {item.quantity}
-                            {i !== order.orderedItems.length - 1 ? ", " : ""}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="text-muted small">
-                        {order.userAddress}
-                      </div>
-                    </td>
-                    <td>Rs.{order.amount.toFixed(2)}</td>
-                    <td>{order.orderedItems.length}</td>
-
-                    {/* NEW: Driver Assignment Dropdown */}
-                    <td>
-                      <select
-                        className="form-select form-select-sm"
-                        onChange={(e) => assignDriver(order.id, e.target.value)}
-                        defaultValue=""
-                      >
-                        <option value="" disabled>
-                          Select Driver
-                        </option>
-                        {drivers.map((driver) => (
-                          <option key={driver.id} value={driver.id}>
-                            {driver.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    <td>
-                      <select
-                        className="form-control form-control-sm"
-                        onChange={(event) => updateStatus(event, order.id)}
-                        value={order.orderStatus}
-                      >
-                        <option value="Food Preparing">Food Preparing</option>
-                        <option value="ASSIGNED">Assigned</option>
-                        <option value="Out for delivery">
-                          Out for delivery
-                        </option>
-                        <option value="Delivered">Delivered</option>
-                      </select>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

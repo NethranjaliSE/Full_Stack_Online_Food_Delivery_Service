@@ -17,36 +17,15 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil;
+
     @Autowired
     private UserDetailsService userDetailsService;
-
-    // NEW: List of paths that should skip this filter
-    private static final List<String> EXCLUDE_URLS = Arrays.asList(
-            "/api/login",
-            "/api/register",
-            "/api/google-login",
-            "/api/foods", // If you want food browsing to be public
-            "/api/orders/notify" // For PayHere callbacks
-    );
-
-    /**
-     * This method tells Spring to SKIP the filter entirely for specific URLs.
-     * This prevents 403 errors if the frontend accidentally sends a "Bearer null" header during login.
-     */
-    @Override
-    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
-        String path = request.getServletPath();
-        // Returns true if the path starts with any of the excluded URLs
-        return EXCLUDE_URLS.stream().anyMatch(path::startsWith);
-    }
 
     @Override
     protected void doFilterInternal(
@@ -57,7 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
-        // 1. Check if header is missing or doesn't start with Bearer
+        // 1. Check if header is missing or invalid
         if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -65,30 +44,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             // 2. Extract Token
-            String token = authHeader.substring(7);
+            final String token = authHeader.substring(7); // Remove "Bearer "
 
-            // Guard clause against "Bearer null" or "Bearer undefined" from frontend
-            if (token.equals("null") || token.equals("undefined")) {
+            // 3. Safety Check for "null" or "undefined" strings from frontend
+            if ("null".equals(token) || "undefined".equals(token)) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            String email = jwtUtil.extractUsername(token);
+            // 4. Extract Email
+            final String email = jwtUtil.extractUsername(token);
 
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                // 5. Load User Details from DB (Ensure this method loads the ROLE!)
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(email);
 
+                // 6. Validate Token
                 if (jwtUtil.validateToken(token, userDetails)) {
+
+                    // 7. Create Authentication Token
+                    // CRITICAL: userDetails.getAuthorities() MUST contain "ROLE_DELIVERY"
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities()
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
                     );
+
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    // 8. Set Authentication in Context
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
         } catch (Exception e) {
-            // Log the error but don't stop the chain; let Spring Security handle the 403 gracefully
-            System.err.println("JWT Authentication failed: " + e.getMessage());
+            // Log error but allow request to proceed (will likely fail 403 later)
+            System.err.println("Cannot set user authentication: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);

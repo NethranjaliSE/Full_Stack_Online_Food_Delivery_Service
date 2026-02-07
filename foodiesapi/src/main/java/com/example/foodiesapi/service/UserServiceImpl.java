@@ -1,11 +1,14 @@
-package com.example.foodiesapi.service;
+package com.example.foodiesapi.service.impl;
 
 import com.example.foodiesapi.entity.UserEntity;
 import com.example.foodiesapi.io.AuthenticationResponse;
 import com.example.foodiesapi.io.UserRequest;
 import com.example.foodiesapi.io.UserResponse;
 import com.example.foodiesapi.repository.UserRepository;
+import com.example.foodiesapi.service.UserService;
+import com.example.foodiesapi.service.AppUserDetailsService;
 import com.example.foodiesapi.util.JwtUtil;
+import com.example.foodiesapi.service.AutthenticationFacade;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -27,22 +30,34 @@ public class UserServiceImpl implements UserService {
     private final JwtUtil jwtUtil;
     private final AppUserDetailsService userDetailsService;
 
+    // --- 1. NEW: ADMIN DRIVER LIST ---
+    @Override
+    public List<UserEntity> getAllDeliveryPersonnel() {
+        // Fetches everyone with 'ROLE_DELIVERY' (Available OR Busy)
+        return userRepository.findByRole("ROLE_DELIVERY");
+    }
+
+    // --- 2. NEW: FRONTEND ID DISCOVERY ---
+    @Override
+    public UserEntity getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+    }
+
+    // --- EXISTING METHODS ---
+
     @Override
     public UserResponse registerUser(UserRequest request) {
         UserEntity newUser = convertToEntity(request);
 
-        // --- UPDATED LOGIC FOR ADMIN CREATION ---
-        // If Postman sends "role": "ROLE_ADMIN", use it.
-        // Otherwise, default to "ROLE_USER".
+        // Logic for assigning roles via Postman or Default
         if (request.getRole() != null && !request.getRole().isEmpty()) {
             newUser.setRole(request.getRole());
         } else {
             newUser.setRole("ROLE_USER");
         }
 
-        // Default availability (Admins usually don't need this, but good to set true for safety)
         newUser.setAvailable(true);
-
         newUser = userRepository.save(newUser);
         return convertToResponse(newUser);
     }
@@ -78,7 +93,7 @@ public class UserServiceImpl implements UserService {
             UserEntity newUser = UserEntity.builder()
                     .email(email)
                     .name(name)
-                    .role("ROLE_USER") // Google Login always defaults to USER
+                    .role("ROLE_USER")
                     .isAvailable(false)
                     .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                     .build();
@@ -88,11 +103,13 @@ public class UserServiceImpl implements UserService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
         String jwtToken = jwtUtil.generateToken(userDetails);
 
+        // Uses the 3-argument constructor (Email, Token, Role)
         return new AuthenticationResponse(email, jwtToken, user.getRole());
     }
 
     @Override
     public List<UserEntity> getAvailableDeliveryBoys() {
+        // For the dropdown (Only Online drivers)
         return userRepository.findByRoleAndIsAvailableTrue("ROLE_DELIVERY");
     }
 
@@ -109,7 +126,6 @@ public class UserServiceImpl implements UserService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
-                // Do not set role here, it is handled in registerUser
                 .build();
     }
 
