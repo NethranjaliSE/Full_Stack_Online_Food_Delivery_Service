@@ -1,56 +1,92 @@
-import React from "react";
-import "./Contact.css";
+import React, { useState } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
+import "./Contact.css"; // Add basic CSS for styling
 
 const Contact = () => {
+  const url = "http://localhost:8081";
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+
+  const onChangeHandler = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const onSubmitHandler = async (event) => {
+    event.preventDefault();
+    try {
+      const response = await axios.post(`${url}/api/contact/add`, formData);
+      if (response.status === 200) {
+        toast.success("Message sent successfully!");
+        setFormData({ name: "", email: "", subject: "", message: "" });
+      }
+    } catch (error) {
+      toast.error("Error sending message.");
+    }
+  };
+
   return (
-    <section className="py-5">
-      <div className="container">
-        <div className="row justify-content-center">
-          <div className="col-lg-8">
-            <div className="contact-form p-5 shadow-sm bg-white">
-              <h2 className="text-center mb-4">Get in Touch</h2>
-              <form>
-                <div className="row g-3">
-                  <div className="col-md-6">
-                    <input
-                      type="text"
-                      className="form-control custom-input"
-                      placeholder="First Name"
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <input
-                      type="text"
-                      className="form-control custom-input"
-                      placeholder="Last Name"
-                    />
-                  </div>
-                  <div className="col-12">
-                    <input
-                      type="email"
-                      className="form-control custom-input"
-                      placeholder="Email Address"
-                    />
-                  </div>
-                  <div className="col-12">
-                    <textarea
-                      className="form-control custom-input"
-                      rows="5"
-                      placeholder="Your Message"
-                    ></textarea>
-                  </div>
-                  <div className="col-12">
-                    <button className="btn btn-primary w-100" type="submit">
-                      Send Message
-                    </button>
-                  </div>
-                </div>
-              </form>
+    <div className="contact-container container py-5">
+      <h2 className="text-center mb-4">Contact Us</h2>
+      <div className="row justify-content-center">
+        <div className="col-md-8 col-lg-6">
+          <form onSubmit={onSubmitHandler} className="card p-4 shadow-sm">
+            <div className="mb-3">
+              <label className="form-label">Your Name</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={onChangeHandler}
+                className="form-control"
+                required
+              />
             </div>
-          </div>
+            <div className="mb-3">
+              <label className="form-label">Your Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={onChangeHandler}
+                className="form-control"
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Subject</label>
+              <input
+                type="text"
+                name="subject"
+                value={formData.subject}
+                onChange={onChangeHandler}
+                className="form-control"
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Message</label>
+              <textarea
+                name="message"
+                value={formData.message}
+                onChange={onChangeHandler}
+                className="form-control"
+                rows="5"
+                required
+              ></textarea>
+            </div>
+            <button type="submit" className="btn btn-primary w-100">
+              Send Message
+            </button>
+          </form>
         </div>
       </div>
-    </section>
+    </div>
   );
 };
 

@@ -8,7 +8,8 @@ import AddFood from "./pages/AddFood/AddFood";
 import ListFood from "./pages/ListFood/ListFood";
 import Orders from "./pages/Orders/Orders";
 import Login from "./pages/Login/Login";
-import DeliveryList from "./pages/DeliveryList/DeliveryList"; // 1. NEW IMPORT
+import DeliveryList from "./pages/DeliveryList/DeliveryList";
+import Reviews from "./pages/Reviews/Reviews"; // New Import
 
 // Components
 import Sidebar from "./components/Sidebar/Sidebar";
@@ -16,6 +17,7 @@ import Menubar from "./components/Menubar/Menubar";
 
 const App = () => {
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  // Get token from storage to persist login
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const url = "http://localhost:8081";
 
@@ -51,13 +53,18 @@ const App = () => {
 
         <div className="container-fluid">
           <Routes>
+            {/* 1. Main Features */}
             <Route path="/add" element={<AddFood url={url} />} />
             <Route path="/list" element={<ListFood url={url} />} />
             <Route path="/orders" element={<Orders url={url} />} />
 
-            {/* 2. NEW ROUTE FOR DELIVERY LIST */}
+            {/* 2. Delivery Management */}
             <Route path="/delivery-list" element={<DeliveryList url={url} />} />
 
+            {/* 3. Customer Reviews (MOVED UP) */}
+            <Route path="/reviews" element={<Reviews url={url} />} />
+
+            {/* 4. Redirects (Must be last) */}
             <Route path="/" element={<Navigate to="/list" />} />
             <Route path="*" element={<Navigate to="/list" />} />
           </Routes>

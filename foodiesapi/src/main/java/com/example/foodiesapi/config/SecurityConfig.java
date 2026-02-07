@@ -60,6 +60,8 @@ public class SecurityConfig {
                         // Now, EITHER 'ROLE_DELIVERY' OR 'ROLE_ADMIN' can access this.
                         .requestMatchers("/api/delivery/**").hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN")
 
+                        .requestMatchers("/api/contact/**").permitAll()
+
                         // Secure all other requests
                         .anyRequest().authenticated()
                 )

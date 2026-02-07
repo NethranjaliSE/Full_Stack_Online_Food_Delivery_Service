@@ -48,6 +48,13 @@ const Sidebar = ({ sidebarVisible }) => {
         >
           <i className="bi bi-truck me-2"></i> Delivery Team
         </Link>
+
+        <Link
+          to="/reviews"
+          className={`list-group-item list-group-item-action list-group-item-light p-3 ${isActive("/reviews")}`}
+        >
+          <i className="bi bi-envelope-paper me-2"></i> Messages/Reviews
+        </Link>
       </div>
     </div>
   );
