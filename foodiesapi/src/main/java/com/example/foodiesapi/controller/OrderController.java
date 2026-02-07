@@ -20,30 +20,24 @@ public class OrderController {
 
     /**
      * 1. INITIATE PAYMENT
-     * Replaces the old Razorpay create method.
-     * Instead of creating an order on the server, this generates the MD5 Hash
-     * and returns the data needed for the PayHere frontend script.
+     * Generates PayHere Hash and prepares checkout data.
      */
     @PostMapping("/create")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> createOrderWithPayHere(@RequestBody OrderRequest request) {
-        // You need to update your OrderService to have this method
         return orderService.initiatePayHereCheckout(request);
     }
 
     /**
-     * 2. NOTIFY URL (Web_hook)
-     * PayHere sends a POST request here when payment completes.
-     * IMPORTANT: PayHere sends data as 'application/x-www-form-urlencoded', NOT JSON.
-     * So we use @RequestParam instead of @RequestBody.
+     * 2. NOTIFY URL (Webhook)
+     * Handles PayHere payment status callbacks.
      */
     @PostMapping(value = "/notify", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public void verifyPayment(@RequestParam Map<String, String> paymentData) {
-        System.out.println("PayHere Notification Received: " + paymentData);
         orderService.handlePayHereNotification(paymentData);
     }
 
-    // --- Standard Endpoints (These usually stay the same) ---
+    // --- Standard Endpoints ---
 
     @GetMapping
     public List<OrderResponse> getOrders() {
@@ -56,15 +50,31 @@ public class OrderController {
         orderService.removeOrder(orderId);
     }
 
-    // --- Admin Panel Endpoints ---
+    // --- Admin & Delivery Logic ---
 
     @GetMapping("/all")
     public List<OrderResponse> getOrdersOfAllUsers() {
         return orderService.getOrdersOfAllUsers();
     }
 
+    /**
+     * Updated to handle role-based status changes.
+     * Logic inside OrderServiceImpl will handle making delivery boys
+     * available again if status is set to 'DELIVERED'.
+     */
     @PatchMapping("/status/{orderId}")
     public void updateOrderStatus(@PathVariable String orderId, @RequestParam String status) {
         orderService.updateOrderStatus(orderId, status);
+    }
+
+    /**
+     * NEW: Assignment endpoint for AdminPanel.
+     * Connects an order to a delivery boy.
+     */
+    @PutMapping("/{orderId}/assign/{deliveryBoyId}")
+    public OrderResponse assignDeliveryBoy(
+            @PathVariable String orderId,
+            @PathVariable String deliveryBoyId) {
+        return orderService.assignDeliveryBoy(orderId, deliveryBoyId);
     }
 }

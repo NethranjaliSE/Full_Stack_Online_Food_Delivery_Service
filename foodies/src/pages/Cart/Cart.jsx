@@ -8,6 +8,7 @@ const Cart = () => {
   const navigate = useNavigate();
   const { foodList, increaseQty, decreaseQty, quantities, removeFromCart } =
     useContext(StoreContext);
+
   //cart items
   const cartItems = foodList.filter((food) => quantities[food.id] > 0);
 
@@ -27,59 +28,91 @@ const Cart = () => {
           ) : (
             <div className="card mb-4">
               <div className="card-body">
-                {cartItems.map((food) => (
-                  <div key={food.id} className="row cart-item mb-3">
-                    <div className="col-md-3">
-                      <img
-                        src={food.imageUrl}
-                        alt={food.name}
-                        className="img-fluid rounded"
-                        width={100}
-                      />
-                    </div>
-                    <div className="col-md-5">
-                      <h5 className="card-title">{food.name}</h5>
-                      <p className="text-muted">Category: {food.category}</p>
-                    </div>
-                    <div className="col-md-2">
-                      <div className="input-group">
-                        <button
-                          className="btn btn-outline-secondary btn-sm"
-                          type="button"
-                          onClick={() => decreaseQty(food.id)}
-                        >
-                          -
-                        </button>
-                        <input
-                          style={{ maxWidth: "100px" }}
-                          type="text"
-                          className="form-control  form-control-sm text-center quantity-input"
-                          value={quantities[food.id]}
-                          readOnly
+                {cartItems.map((food) => {
+                  // --- NEW LOGIC START ---
+                  const currentQty = quantities[food.id];
+                  // Check if stock is defined and if we hit the limit
+                  const isMaxReached =
+                    food.stock !== null &&
+                    food.stock !== undefined &&
+                    currentQty >= food.stock;
+                  // --- NEW LOGIC END ---
+
+                  return (
+                    <div
+                      key={food.id}
+                      className="row cart-item mb-3 align-items-center"
+                    >
+                      <div className="col-md-3">
+                        <img
+                          src={food.imageUrl}
+                          alt={food.name}
+                          className="img-fluid rounded"
+                          width={100}
                         />
+                      </div>
+                      <div className="col-md-5">
+                        <h5 className="card-title">{food.name}</h5>
+                        <p className="text-muted">Category: {food.category}</p>
+                      </div>
+
+                      {/* Quantity Controls Column */}
+                      <div className="col-md-2">
+                        <div className="input-group">
+                          <button
+                            className="btn btn-outline-secondary btn-sm"
+                            type="button"
+                            onClick={() => decreaseQty(food.id)}
+                          >
+                            -
+                          </button>
+                          <input
+                            style={{ maxWidth: "50px", textAlign: "center" }}
+                            type="text"
+                            className="form-control form-control-sm"
+                            value={currentQty}
+                            readOnly
+                          />
+                          <button
+                            className="btn btn-outline-secondary btn-sm"
+                            type="button"
+                            // Prevent click if max reached
+                            onClick={() => {
+                              if (!isMaxReached) increaseQty(food.id);
+                            }}
+                            // Bootstrap visual disable
+                            disabled={isMaxReached}
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Warning Text */}
+                        {isMaxReached && (
+                          <small
+                            className="text-danger d-block mt-1"
+                            style={{ fontSize: "0.75rem" }}
+                          >
+                            Max limit reached
+                          </small>
+                        )}
+                      </div>
+
+                      <div className="col-md-2 text-end">
+                        <p className="fw-bold">
+                          Rs.{(food.price * currentQty).toFixed(2)}
+                        </p>
                         <button
-                          className="btn btn-outline-secondary btn-sm"
-                          type="button"
-                          onClick={() => increaseQty(food.id)}
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => removeFromCart(food.id)}
                         >
-                          +
+                          <i className="bi bi-trash"></i>
                         </button>
                       </div>
+                      <hr className="mt-3" />
                     </div>
-                    <div className="col-md-2 text-end">
-                      <p className="fw-bold">
-                        Rs.{(food.price * quantities[food.id]).toFixed(2)}
-                      </p>
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => removeFromCart(food.id)}
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
-                    </div>
-                    <hr />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -90,6 +123,8 @@ const Cart = () => {
             </Link>
           </div>
         </div>
+
+        {/* Summary Section (Unchanged) */}
         <div className="col-lg-4">
           <div className="card cart-summary">
             <div className="card-body">

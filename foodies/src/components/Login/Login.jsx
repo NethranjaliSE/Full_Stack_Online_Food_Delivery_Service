@@ -23,27 +23,50 @@ const Login = () => {
     event.preventDefault();
     try {
       const response = await login(data);
-      if (response.status === 200) {
-        setToken(response.data.token);
-        localStorage.setItem("token", response.data.token);
-        await loadCartData(response.data.token);
-        navigate("/");
+
+      // Checking for 200 OK and ensuring data exists
+      if (response.status === 200 && response.data.token) {
+        const { token, role, email } = response.data;
+
+        // 1. Set global state and LocalStorage
+        setToken(token);
+        localStorage.setItem("token", token);
+        localStorage.setItem("role", role); // Crucial for routing
+        localStorage.setItem("userEmail", email); // Helpful for identifying delivery boy
+
+        // 2. Load user-specific data
+        await loadCartData(token);
+
+        toast.success("Login Successful!");
+
+        // 3. ROLE-BASED REDIRECTION LOGIC
+        if (role === "ROLE_DELIVERY") {
+          navigate("/delivery-dashboard"); // Redirect delivery boys to their task list
+        } else if (role === "ROLE_ADMIN") {
+          // If they happen to login here, you can redirect to admin URL or a notice
+          toast.info("Redirecting to Admin Dashboard...");
+          window.location.href = "http://localhost:5174"; // Adjust to your Admin port
+        } else {
+          navigate("/"); // Standard customer goes to Home
+        }
       } else {
-        toast.error("Unable to login. Please try again.");
+        toast.error("Invalid response from server.");
       }
     } catch (error) {
       console.log("Unable to login", error);
-      toast.error("Unable to login. Please try again");
+      const errorMsg =
+        error.response?.data?.message || "Invalid Email or Password";
+      toast.error(errorMsg);
     }
   };
 
   const onResetHandler = () => {
-    // This sets the state back to empty strings
     setData({
       email: "",
       password: "",
     });
   };
+
   return (
     <div className="login-container">
       <div className="row">
@@ -63,6 +86,7 @@ const Login = () => {
                     name="email"
                     onChange={onChangeHandler}
                     value={data.email}
+                    required
                   />
                   <label htmlFor="floatingInput">Email address</label>
                 </div>
@@ -75,6 +99,7 @@ const Login = () => {
                     name="password"
                     onChange={onChangeHandler}
                     value={data.password}
+                    required
                   />
                   <label htmlFor="floatingPassword">Password</label>
                 </div>
@@ -88,13 +113,13 @@ const Login = () => {
                   </button>
                   <button
                     className="btn btn-outline-danger btn-login text-uppercase mt-2"
-                    type="button" // Changed from "reset" to "button"
-                    onClick={onResetHandler} // Added this
+                    type="button"
+                    onClick={onResetHandler}
                   >
                     Reset
                   </button>
                 </div>
-                <div className="mt-4">
+                <div className="mt-4 text-center">
                   Don't have an account? <Link to="/register">Sign up</Link>
                 </div>
               </form>

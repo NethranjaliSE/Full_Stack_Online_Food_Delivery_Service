@@ -13,15 +13,20 @@ public interface OrderRepository extends MongoRepository<OrderEntity, String> {
     // Finds all orders for a specific user (Standard)
     List<OrderEntity> findByUserId(String userId);
 
+    /**
+     * NEW: Finds all orders assigned to a specific delivery boy.
+     * This will be used in the Delivery Boy's dashboard to see their current tasks.
+     */
+    List<OrderEntity> findByDeliveryBoyId(String deliveryBoyId);
 
-
+    /**
+     * NEW: Finds orders by their current status.
+     * Useful for Admin to see "Placed" orders or Delivery Boys to see "Ready for Pickup" orders.
+     */
+    List<OrderEntity> findByOrderStatus(String orderStatus);
 
     // CHANGED: Replaced Razorpay ID with PayHere Payment ID
-    // This is optional but helpful if you want to search by the ID PayHere gives you.
     Optional<OrderEntity> findByPayherePaymentId(String payherePaymentId);
 
-    // NOTE: You don't need a special method to find the order during the callback.
-    // PayHere sends back YOUR database ID, so you will just use the built-in findById() method.
-
-
+    // NOTE: Built-in findById() is used during PayHere callbacks.
 }

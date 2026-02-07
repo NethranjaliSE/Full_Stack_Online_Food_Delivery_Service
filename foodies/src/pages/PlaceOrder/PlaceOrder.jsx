@@ -9,7 +9,6 @@ import { createOrder } from "../../service/orderService";
 import { clearCartItems } from "../../service/cartService";
 
 const PlaceOrder = () => {
-  // 1. Destructure 'fetchFoodList' from Context
   const { foodList, quantities, setQuantities, token, fetchFoodList } =
     useContext(StoreContext);
 
@@ -46,29 +45,31 @@ const PlaceOrder = () => {
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
+
+    // 1. Create the order object for your backend
     const orderData = {
-      userAddress: `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}`,
+      userAddress: `${data.address}, ${data.city}`,
       phoneNumber: data.phoneNumber,
       email: data.email,
       orderedItems: cartItems.map((item) => ({
         id: item.id,
         quantity: quantities[item.id],
         price: item.price * quantities[item.id],
-        category: item.category,
-        imageUrl: item.imageUrl,
-        description: item.description,
         name: item.name,
       })),
-      amount: total.toFixed(2),
+      amount: total.toFixed(2), // Important: 2 decimal places
       orderStatus: "Preparing",
     };
 
     try {
-      const payHereParams = await createOrder(orderData, token);
-      if (payHereParams && payHereParams.hash) {
-        initiatePayHerePayment(payHereParams);
+      // 2. Send to backend to save order and get Hash
+      const response = await createOrder(orderData, token);
+
+      // 3. If backend gives us a hash, open PayHere
+      if (response && response.hash) {
+        initiatePayHerePayment(response);
       } else {
-        toast.error("Unable to initiate payment. Please try again.");
+        toast.error("Failed to initialize payment. Try again.");
       }
     } catch (error) {
       console.error(error);
@@ -76,39 +77,68 @@ const PlaceOrder = () => {
     }
   };
 
-  const initiatePayHerePayment = (paymentData) => {
+  const initiatePayHerePayment = (backendData) => {
     if (!window.payhere) {
-      toast.error("PayHere SDK not loaded. Check your internet connection.");
+      toast.error("PayHere SDK is not loaded.");
       return;
     }
 
-    // --- SUCCESS HANDLER ---
+    // --- KEY FIX: Manually build the Payment Object ---
+    // Since we aren't using Ngrok, we rely on 'return_url' and 'onCompleted'
+    const payment = {
+      sandbox: true,
+      merchant_id: backendData.merchant_id, // Must match your PayHere ID
+
+      // Redirects for success/cancel (Localhost is fine here)
+      return_url: "http://localhost:5173/myorders",
+      cancel_url: "http://localhost:5173/cart",
+
+      // Keep this empty or a dummy URL since you aren't using Ngrok
+      notify_url: "http://localhost:8081/api/orders/notify",
+
+      order_id: backendData.order_id,
+      items: "Food Order",
+      amount: total.toFixed(2), // Must match the hash generation amount
+      currency: "LKR",
+      hash: backendData.hash, // The security hash from your backend
+
+      // User details from your Form State
+      first_name: data.firstName,
+      last_name: data.lastName,
+      email: data.email,
+      phone: data.phoneNumber,
+      address: data.address,
+      city: data.city,
+      country: "Sri Lanka",
+    };
+
+    // --- Success Handler ---
     window.payhere.onCompleted = async function onCompleted(orderId) {
       console.log("Payment completed. OrderID:" + orderId);
       toast.success("Payment Successful!");
 
-      await clearCart(); // Clear cart first
+      // Since notify_url won't work on localhost, we clear the cart here manually
+      await clearCart();
 
-      // 2. SMOOTH UPDATE: Update stock without page reload
       if (fetchFoodList) {
         await fetchFoodList();
       }
-
-      // 3. Navigate smoothly
       navigate("/myorders");
     };
 
+    // --- Dismissed Handler ---
     window.payhere.onDismissed = function onDismissed() {
-      console.log("Payment dismissed");
-      toast.info("Payment was cancelled.");
+      toast.info("Payment dismissed.");
     };
 
+    // --- Error Handler ---
     window.payhere.onError = function onError(error) {
       console.log("Error:" + error);
       toast.error("Payment Failed: " + error);
     };
 
-    window.payhere.startPayment(paymentData);
+    // Open the popup
+    window.payhere.startPayment(payment);
   };
 
   const clearCart = async () => {
@@ -122,6 +152,7 @@ const PlaceOrder = () => {
   return (
     <div className="container mt-4">
       <main>
+        {/* ... (Keep your existing HTML/JSX for the form exactly as it was) ... */}
         <div className="py-5 text-center">
           <img
             className="d-block mx-auto"
@@ -132,6 +163,7 @@ const PlaceOrder = () => {
           />
         </div>
         <div className="row g-5">
+          {/* Cart Summary */}
           <div className="col-md-5 col-lg-4 order-md-last">
             <h4 className="d-flex justify-content-between align-items-center mb-3">
               <span className="text-primary">Your cart</span>
@@ -157,38 +189,22 @@ const PlaceOrder = () => {
                 </li>
               ))}
               <li className="list-group-item d-flex justify-content-between">
-                <div>
-                  <span>Delivery</span>
-                </div>
-                <span className="text-body-secondary">
-                  Rs.{subtotal === 0 ? "0.00" : delivery.toFixed(2)}
-                </span>
-              </li>
-              <li className="list-group-item d-flex justify-content-between">
-                <div>
-                  <span>Tax (10%)</span>
-                </div>
-                <span className="text-body-secondary">Rs.{tax.toFixed(2)}</span>
-              </li>
-              <li className="list-group-item d-flex justify-content-between">
                 <span>Total (Rs.)</span>
                 <strong>Rs.{total.toFixed(2)}</strong>
               </li>
             </ul>
           </div>
 
+          {/* Billing Form */}
           <div className="col-md-7 col-lg-8">
             <h4 className="mb-3">Billing address</h4>
             <form className="needs-validation" onSubmit={onSubmitHandler}>
               <div className="row g-3">
                 <div className="col-sm-6">
-                  <label htmlFor="firstName" className="form-label">
-                    First name
-                  </label>
+                  <label className="form-label">First name</label>
                   <input
                     type="text"
                     className="form-control"
-                    id="firstName"
                     name="firstName"
                     value={data.firstName}
                     onChange={onChangeHandler}
@@ -196,13 +212,10 @@ const PlaceOrder = () => {
                   />
                 </div>
                 <div className="col-sm-6">
-                  <label htmlFor="lastName" className="form-label">
-                    Last name
-                  </label>
+                  <label className="form-label">Last name</label>
                   <input
                     type="text"
                     className="form-control"
-                    id="lastName"
                     name="lastName"
                     value={data.lastName}
                     onChange={onChangeHandler}
@@ -210,13 +223,10 @@ const PlaceOrder = () => {
                   />
                 </div>
                 <div className="col-12">
-                  <label htmlFor="email" className="form-label">
-                    Email
-                  </label>
+                  <label className="form-label">Email</label>
                   <input
                     type="email"
                     className="form-control"
-                    id="email"
                     name="email"
                     value={data.email}
                     onChange={onChangeHandler}
@@ -224,13 +234,10 @@ const PlaceOrder = () => {
                   />
                 </div>
                 <div className="col-12">
-                  <label htmlFor="phone" className="form-label">
-                    Phone Number
-                  </label>
+                  <label className="form-label">Phone</label>
                   <input
                     type="number"
                     className="form-control"
-                    id="phone"
                     name="phoneNumber"
                     value={data.phoneNumber}
                     onChange={onChangeHandler}
@@ -238,13 +245,10 @@ const PlaceOrder = () => {
                   />
                 </div>
                 <div className="col-12">
-                  <label htmlFor="address" className="form-label">
-                    Address
-                  </label>
+                  <label className="form-label">Address</label>
                   <input
                     type="text"
                     className="form-control"
-                    id="address"
                     name="address"
                     value={data.address}
                     onChange={onChangeHandler}
@@ -252,12 +256,9 @@ const PlaceOrder = () => {
                   />
                 </div>
                 <div className="col-12">
-                  <label htmlFor="city" className="form-label">
-                    City
-                  </label>
+                  <label className="form-label">City</label>
                   <select
                     className="form-select"
-                    id="city"
                     name="city"
                     value={data.city}
                     onChange={onChangeHandler}
@@ -265,9 +266,8 @@ const PlaceOrder = () => {
                   >
                     <option value="">Choose...</option>
                     <option value="Colombo">Colombo</option>
-                    <option value="Kelaniya">Kelaniya</option>
-                    <option value="Kiribathgoda">Kiribathgoda</option>
-                    <option value="Kadawatha">Kadawatha</option>
+                    <option value="Kandy">Kandy</option>
+                    <option value="Galle">Galle</option>
                   </select>
                 </div>
               </div>

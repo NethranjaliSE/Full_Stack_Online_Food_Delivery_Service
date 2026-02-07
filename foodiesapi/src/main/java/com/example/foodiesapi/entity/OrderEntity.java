@@ -25,12 +25,28 @@ public class OrderEntity {
     private String currency; // Added: e.g., "LKR"
 
     private String paymentStatus; // e.g., "Pending", "Success", "Failed"
-    private String orderStatus;   // e.g., "Placed", "Preparing", "Delivered"
+
+    /**
+     * Updated orderStatus flow:
+     * "Placed" -> "Preparing" -> "Ready for Pickup" -> "On the Way" -> "Delivered"
+     */
+    private String orderStatus;
+
+    // --- Delivery System Fields ---
+
+    /**
+     * Stores the User ID of the delivery boy assigned to this order.
+     * Will be null until an Admin assigns it.
+     */
+    private String deliveryBoyId;
+
+    /**
+     * Optional: Stores the name or phone of the delivery boy for quick access
+     * without needing to query the User collection every time.
+     */
+    private String deliveryBoyName;
 
     // --- PayHere Specific Fields ---
     private String payherePaymentId; // Stores the "payment_id" sent by PayHere
 
-
-    // Optional: Store the raw status message from PayHere for debugging
-    // private String payhereStatusMessage;
 }

@@ -19,5 +19,13 @@ public class UserEntity {
     private String name;
     private String email;
     private String password;
-    private String role;
+
+    private String role; // ROLE_USER, ROLE_ADMIN, ROLE_DELIVERY
+
+    /**
+     * boolean isAvailable
+     * MongoDB field will be "isAvailable"
+     */
+    @Builder.Default
+    private boolean isAvailable = true;
 }

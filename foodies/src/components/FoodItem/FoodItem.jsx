@@ -3,11 +3,16 @@ import { Link } from "react-router-dom";
 import { StoreContext } from "../../context/StoreContext";
 
 const FoodItem = ({ name, description, id, imageUrl, price, stock }) => {
+  // Ensure these match your Context names exactly
   const { increaseQty, decreaseQty, quantities } = useContext(StoreContext);
 
   const qty = quantities?.[id] || 0;
 
+  // Logic: Check if stock exists and is 0
   const isOutOfStock = stock !== null && stock !== undefined && stock <= 0;
+
+  // Logic: Check if we have hit the maximum limit
+  const isMaxReached = stock !== null && stock !== undefined && qty >= stock;
 
   return (
     <div className="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex justify-content-center">
@@ -41,9 +46,10 @@ const FoodItem = ({ name, description, id, imageUrl, price, stock }) => {
             {description}
           </p>
 
+          {/* Show warning if stock is low (but not 0) */}
           {!isOutOfStock && stock !== null && stock < 10 && (
             <small className="text-danger fw-bold d-block mb-1">
-              Only {stock} left!
+              {isMaxReached ? "Max stock reached!" : `Only ${stock} left!`}
             </small>
           )}
 
@@ -79,11 +85,20 @@ const FoodItem = ({ name, description, id, imageUrl, price, stock }) => {
                   >
                     <i className="bi bi-dash-circle"></i>
                   </button>
+
                   <span className="fw-bold">{qty}</span>
+
+                  {/* PLUS BUTTON: Stops when limit reached */}
                   <button
                     className="btn btn-success btn-sm"
-                    onClick={() => increaseQty(id)}
-                    disabled={stock !== null && qty >= stock}
+                    onClick={() => {
+                      // Double check before adding
+                      if (!isMaxReached) {
+                        increaseQty(id);
+                      }
+                    }}
+                    // Bootstrap will visually disable the button
+                    disabled={isMaxReached}
                   >
                     <i className="bi bi-plus-circle"></i>
                   </button>
@@ -93,7 +108,7 @@ const FoodItem = ({ name, description, id, imageUrl, price, stock }) => {
                   className="btn btn-primary btn-sm"
                   onClick={() => increaseQty(id)}
                 >
-                  <i className="bi bi-plus-circle"></i>
+                  <i className="bi bi-plus-circle"></i> Add
                 </button>
               )}
             </>

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import "./Login.css"; // We will create this next
+import "./Login.css";
 
 const Login = ({ setToken, url }) => {
   const [data, setData] = useState({
@@ -18,23 +18,34 @@ const Login = ({ setToken, url }) => {
   const onLogin = async (event) => {
     event.preventDefault();
     try {
-      // Calls your updated backend login
-      const response = await axios.post(url + "/api/user/login", data);
+      // Calls your updated backend login endpoint
+      const response = await axios.post(url + "/api/login", data);
 
-      if (response.data.success) {
-        // Check if the user is an ADMIN (optional safety check)
-        if (response.data.data.role === "ADMIN") {
-          setToken(response.data.data.token);
+      /**
+       * The backend now returns { email, token, role } directly in the body
+       * based on the updated AuthenticationResponse.java.
+       */
+      if (response.data.token) {
+        const { token, role } = response.data;
+
+        // Check if the user has the ADMIN role
+        if (role === "ROLE_ADMIN") {
+          setToken(token);
+          // Persist the token and role for route protection
+          localStorage.setItem("token", token);
+          localStorage.setItem("role", role);
           toast.success("Welcome Admin");
         } else {
           toast.error("Access Denied. Admins Only.");
         }
       } else {
-        toast.error(response.data.message);
+        toast.error("Invalid response from server.");
       }
     } catch (error) {
       console.error(error);
-      toast.error("Login Failed");
+      // Handle 401 Unauthorized or other errors
+      const errorMessage = error.response?.data?.message || "Login Failed";
+      toast.error(errorMessage);
     }
   };
 
