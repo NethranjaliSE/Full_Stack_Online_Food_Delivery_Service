@@ -1,7 +1,7 @@
 package com.example.foodiesapi.controller;
 
+import com.example.foodiesapi.io.AuthenticationResponse;
 import com.example.foodiesapi.io.UserRequest;
-import com.example.foodiesapi.io.UserResponse;
 import com.example.foodiesapi.service.UserService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,7 +16,8 @@ public class UserController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public UserResponse register(@RequestBody UserRequest request) {
-        return userService.registerUser(request);
+    public AuthenticationResponse register(@RequestBody UserRequest request) {
+        // Register user + return token (auto-login after register)
+        return userService.registerAndReturnToken(request);
     }
 }

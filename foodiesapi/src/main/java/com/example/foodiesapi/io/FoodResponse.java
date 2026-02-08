@@ -17,7 +17,6 @@ public class FoodResponse {
     private double price;
     private String category;
 
-    // --- NEW FIELD ---
-    // This sends the stock count to the React frontend
+
     private Integer stock;
 }
