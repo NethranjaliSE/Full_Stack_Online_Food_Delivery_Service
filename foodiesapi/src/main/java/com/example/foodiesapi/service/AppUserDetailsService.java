@@ -9,8 +9,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
-import java.util.Collections;
+import java.util.List;
 
 @Service
 @AllArgsConstructor
@@ -23,15 +24,23 @@ public class AppUserDetailsService implements UserDetailsService {
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
-        /**
-         * UPDATED: Instead of Collections.emptyList(), we now pass the user's role.
-         * Spring Security expects roles to be granted authorities.
-         * Ensure your roles in MongoDB are "ROLE_USER", "ROLE_ADMIN", or "ROLE_DELIVERY".
-         */
+        // role from DB: could be "ADMIN" or "ROLE_ADMIN"
+        String role = user.getRole();
+
+        // default role if missing
+        if (!StringUtils.hasText(role)) {
+            role = "USER";
+        }
+
+        // normalize to Spring format: ROLE_XXX
+        if (!role.startsWith("ROLE_")) {
+            role = "ROLE_" + role;
+        }
+
         return new User(
                 user.getEmail(),
                 user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority(user.getRole()))
+                List.of(new SimpleGrantedAuthority(role))
         );
     }
 }

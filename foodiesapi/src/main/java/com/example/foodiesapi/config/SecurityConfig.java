@@ -17,8 +17,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
@@ -39,7 +39,14 @@ public class SecurityConfig {
                 // 2. CSRF
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // 3. Authorization Rules
+                // 3. No session (JWT)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // 4. Disable default auth screens
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+
+                // 5. Authorization Rules
                 .authorizeHttpRequests(auth -> auth
                         // Public Endpoints
                         .requestMatchers(
@@ -47,7 +54,8 @@ public class SecurityConfig {
                                 "/api/login",
                                 "/api/google-login",
                                 "/api/foods/**",
-                                "/api/orders/notify"
+                                "/api/orders/notify",
+                                "/api/contact/**"
                         ).permitAll()
 
                         // Admin Only
@@ -55,21 +63,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/orders/all").hasRole("ADMIN")
                         .requestMatchers("/api/orders/status/**").hasRole("ADMIN")
 
-                        // 👇 THIS IS THE FIX 👇
-                        // We removed the conflicting .hasRole("DELIVERY") line.
-                        // Now, EITHER 'ROLE_DELIVERY' OR 'ROLE_ADMIN' can access this.
-                        .requestMatchers("/api/delivery/**").hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN")
-
-                        .requestMatchers("/api/contact/**").permitAll()
+                        // Delivery OR Admin
+                        .requestMatchers("/api/delivery/**").hasAnyRole("DELIVERY", "ADMIN")
 
                         // Secure all other requests
                         .anyRequest().authenticated()
                 )
 
-                // 4. Session Management
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // 5. JWT Filter
+                // 6. JWT Filter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -84,17 +85,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allowed Origins
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost:5174",
                 "http://localhost:5175"
         ));
 
-        // Allowed Methods
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
-        // Allowed Headers
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control"));
 
         config.setAllowCredentials(true);

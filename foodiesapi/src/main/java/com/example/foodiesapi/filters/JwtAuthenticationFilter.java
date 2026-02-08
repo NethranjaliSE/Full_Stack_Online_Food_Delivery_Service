@@ -27,6 +27,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private UserDetailsService userDetailsService;
 
+    /**
+     * Optional optimization: Don't try JWT for public endpoints.
+     * (Even if you remove this, JWT still works.)
+     */
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.equals("/api/login")
+                || path.equals("/api/register")
+                || path.equals("/api/google-login")
+                || path.startsWith("/api/foods/")
+                || path.equals("/api/orders/notify")
+                || path.startsWith("/api/contact/");
+    }
+
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -36,49 +51,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
-        // 1. Check if header is missing or invalid
+        // 1) Check if header is missing or invalid
         if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        try {
-            // 2. Extract Token
-            final String token = authHeader.substring(7); // Remove "Bearer "
+        // 2) Extract token
+        final String token = authHeader.substring(7).trim();
 
-            // 3. Safety Check for "null" or "undefined" strings from frontend
-            if ("null".equals(token) || "undefined".equals(token)) {
+        // 3) Safety check for bad frontend strings
+        if (!StringUtils.hasText(token) || "null".equalsIgnoreCase(token) || "undefined".equalsIgnoreCase(token)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        try {
+            // 4) Extract email/username from token
+            final String email = jwtUtil.extractUsername(token);
+
+            // 5) If already authenticated, continue
+            if (email == null || SecurityContextHolder.getContext().getAuthentication() != null) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            // 4. Extract Email
-            final String email = jwtUtil.extractUsername(token);
+            // 6) Load user
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // 5. Load User Details from DB (Ensure this method loads the ROLE!)
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(email);
+            // 7) Validate token
+            if (jwtUtil.validateToken(token, userDetails)) {
 
-                // 6. Validate Token
-                if (jwtUtil.validateToken(token, userDetails)) {
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
 
-                    // 7. Create Authentication Token
-                    // CRITICAL: userDetails.getAuthorities() MUST contain "ROLE_DELIVERY"
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
-
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                    // 8. Set Authentication in Context
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
+
         } catch (Exception e) {
-            // Log error but allow request to proceed (will likely fail 403 later)
-            System.err.println("Cannot set user authentication: " + e.getMessage());
+            // If token is invalid/expired, do not authenticate
+            SecurityContextHolder.clearContext();
+            System.err.println("JWT authentication failed: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);
