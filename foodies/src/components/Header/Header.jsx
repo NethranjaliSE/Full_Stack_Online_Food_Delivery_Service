@@ -22,7 +22,7 @@ const Header = () => {
         {/* -------------------------------------------- */}
 
         <h1 className="display-5 fw-bold text-white">
-          Order your favorite food here
+         Hey  Foodie Fleet 
         </h1>
         <p className="col-md-8 fs-4 text-white">
           Fast,Fresh,Delivered to your Door
