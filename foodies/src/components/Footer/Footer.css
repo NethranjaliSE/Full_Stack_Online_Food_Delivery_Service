@@ -1,0 +1,52 @@
+.footer-container {
+    background-color: #1a1a1a;
+    /* Dark background */
+    color: white;
+}
+
+.footer-title {
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+}
+
+.footer-links li {
+    margin-bottom: 10px;
+}
+
+.footer-links a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.footer-links a:hover {
+    color: #b8954d;
+    /* Golden hover */
+}
+
+.contact-item {
+    display: flex;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+.footer-input {
+    background-color: #f8f9fa;
+    border-radius: 0;
+    border: none;
+}
+
+.subscribe-btn {
+    background-color: #b8954d;
+    /* Golden color from your image */
+    color: white;
+    border-radius: 0;
+    font-weight: bold;
+}
+
+.footer-bottom {
+    border-top: 1px solid #333;
+    color: #888;
+}
