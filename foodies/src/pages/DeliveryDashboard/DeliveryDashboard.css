@@ -1,0 +1,111 @@
+.delivery-dashboard-container {
+    padding: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+    min-height: 80vh;
+}
+
+.dashboard-header {
+    margin-bottom: 30px;
+    border-bottom: 2px solid #f1f1f1;
+    padding-bottom: 10px;
+}
+
+.dashboard-header h2 {
+    color: #2d3436;
+    font-weight: 700;
+}
+
+.order-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.delivery-card {
+    background: #fff;
+    border-radius: 12px;
+    border-left: 5px solid #ff4d4d;
+    padding: 20px;
+    transition: transform 0.2s;
+}
+
+.delivery-card:hover {
+    transform: translateY(-3px);
+}
+
+.card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.order-id {
+    font-weight: bold;
+    color: #636e72;
+}
+
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge.assigned {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.status-badge.out-for-delivery {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.status-badge.delivered {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    color: #2d3436;
+}
+
+.info-row i {
+    color: #ff4d4d;
+}
+
+.items-list {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.card-footer {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.amount {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #2d3436;
+}
+
+.no-orders {
+    text-align: center;
+    margin-top: 100px;
+    color: #b2bec3;
+}
