@@ -1,0 +1,7 @@
+{
+    "name": "Test Food",
+    "description": "Debugging food entry",
+    "price": 10,
+    "category": "Biryani",
+    "stock": 5
+}
