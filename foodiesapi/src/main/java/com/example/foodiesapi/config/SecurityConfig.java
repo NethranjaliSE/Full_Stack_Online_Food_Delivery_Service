@@ -55,7 +55,17 @@ public class SecurityConfig {
                                 "/api/google-login",
                                 "/api/foods/**",
                                 "/api/orders/notify",
-                                "/api/contact/**"
+                                "/api/contact/**",
+                                "/error"
+                        ).permitAll()
+
+                        // ✅ Swagger (ADD THIS)
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs",
+                                "/webjars/**"
                         ).permitAll()
 
                         // Admin Only

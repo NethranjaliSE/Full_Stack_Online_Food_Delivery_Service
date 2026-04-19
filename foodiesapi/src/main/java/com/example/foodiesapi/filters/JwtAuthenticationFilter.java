@@ -27,27 +27,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private UserDetailsService userDetailsService;
 
-    /**
-     * Optional optimization: Don't try JWT for public endpoints.
-     * (Even if you remove this, JWT still works.)
-     */
-    @Override
-    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        String path = request.getServletPath();
-        return path.equals("/api/login")
-                || path.equals("/api/register")
-                || path.equals("/api/google-login")
-                || path.startsWith("/api/foods/")
-                || path.equals("/api/orders/notify")
-                || path.startsWith("/api/contact/");
-    }
+
+
+
 
     @Override
     protected void doFilterInternal(
+
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
+
+        String path = request.getServletPath();
+
+// ✅ Skip Swagger endpoints
+        if (path.contains("swagger") || path.contains("api-docs")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         final String authHeader = request.getHeader("Authorization");
 

@@ -32,6 +32,8 @@ public class AppUserDetailsService implements UserDetailsService {
             role = "USER";
         }
 
+        role = role.toUpperCase();
+
         // normalize to Spring format: ROLE_XXX
         if (!role.startsWith("ROLE_")) {
             role = "ROLE_" + role;
